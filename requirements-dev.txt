@@ -1,0 +1,32 @@
+# PyLiRP Development Dependencies
+# Additional dependencies for development and testing
+
+# Include base requirements
+-r requirements.txt
+
+# Testing framework
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+
+# Code quality
+black>=22.0.0
+isort>=5.10.0
+flake8>=5.0.0
+mypy>=1.0.0
+
+# Documentation
+sphinx>=5.0.0
+sphinx-rtd-theme>=1.0.0
+
+# Packet capture for debugging
+scapy>=2.4.0
+
+# Performance profiling
+memory-profiler>=0.60.0
+line-profiler>=4.0.0
+
+# Additional development tools
+ipython>=8.0.0
+jupyter>=1.0.0

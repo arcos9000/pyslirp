@@ -32,6 +32,27 @@ else:
 
 logger = logging.getLogger(__name__)
 
+def check_virtual_environment():
+    """Check if running in virtual environment and log info"""
+    in_venv = hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)
+    
+    if in_venv:
+        venv_path = os.environ.get('VIRTUAL_ENV', sys.prefix)
+        logger.info(f"Running in virtual environment: {venv_path}")
+        logger.info(f"Python executable: {sys.executable}")
+    else:
+        logger.warning("Not running in virtual environment - this may cause dependency issues")
+        logger.info(f"Python executable: {sys.executable}")
+        logger.info(f"Python version: {sys.version}")
+        
+        # Check if we're in a situation where venv is recommended
+        import site
+        user_site = site.getusersitepackages() if hasattr(site, 'getusersitepackages') else None
+        if user_site and user_site in sys.path:
+            logger.info("Using user site-packages - this is OK for user installations")
+    
+    return in_venv
+
 class PyLiRPApplication:
     """Main application class integrating all components"""
     
@@ -481,6 +502,9 @@ async def main():
         level=logging.DEBUG if args.debug else logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+    
+    # Check virtual environment
+    check_virtual_environment()
     
     # Handle Windows-specific commands
     if platform.system() == 'Windows' and WINDOWS_MANAGER:

@@ -1,34 +1,34 @@
 # PyLiRP Python Dependencies
 # Core dependencies for Python SLiRP implementation
 
-# Async serial communication
+# REQUIRED: Async serial communication
 pyserial>=3.5
 pyserial-asyncio>=0.6
 
-# Configuration management
+# REQUIRED: Configuration management
 PyYAML>=6.0
 
-# HTTP server for metrics (optional)
-aiohttp>=3.8.0
-
-# Monitoring and metrics (optional)
-prometheus-client>=0.15.0
-
-# Development and testing dependencies (optional)
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-
-# SOCKS proxy support (optional)
-python-socks>=2.0.0
-
-# Packet capture support (optional)
-scapy>=2.4.0
-
-# Enhanced logging (optional)  
-colorlog>=6.0.0
-
-# Performance monitoring (optional)
+# REQUIRED: Performance monitoring
 psutil>=5.9.0
 
-# Cryptographic functions for security (optional)
+# RECOMMENDED: HTTP server for metrics
+aiohttp>=3.8.0
+
+# RECOMMENDED: Monitoring and metrics
+prometheus-client>=0.15.0
+
+# OPTIONAL: SOCKS proxy support
+python-socks>=2.0.0
+
+# OPTIONAL: Enhanced logging
+colorlog>=6.0.0
+
+# OPTIONAL: Cryptographic functions for security
 cryptography>=3.4.0
+
+# OPTIONAL: Packet capture support (may require system dependencies)
+# scapy>=2.4.0
+
+# DEVELOPMENT: Testing dependencies (not needed for production)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0

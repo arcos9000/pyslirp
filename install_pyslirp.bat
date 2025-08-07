@@ -18,8 +18,8 @@ if %ERRORLEVEL% neq 0 (
 echo Starting PowerShell installation script...
 echo.
 
-REM Launch PowerShell script with bypass execution policy
-powershell -ExecutionPolicy Bypass -File "%~dp0install_windows_userspace.ps1" %*
+REM Launch PowerShell script with bypass execution policy (Virtual Environment version)
+powershell -ExecutionPolicy Bypass -File "%~dp0install_windows_venv.ps1" %*
 
 if %ERRORLEVEL% neq 0 (
     echo.

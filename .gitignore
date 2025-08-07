@@ -86,6 +86,9 @@ logs/
 data/
 config_local.yaml
 
+# Archive directory (obsolete files)
+.archive/
+
 # Windows
 Thumbs.db
 ehthumbs.db
