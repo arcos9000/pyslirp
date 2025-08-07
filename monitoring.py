@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 import statistics
 
 logger = logging.getLogger(__name__)
@@ -527,6 +528,10 @@ class PacketCapture:
         # This is a simplified implementation
         # For production, consider using a proper PCAP library
         try:
+            # Ensure directory exists
+            pcap_path = Path(self._pcap_file)
+            pcap_path.parent.mkdir(parents=True, exist_ok=True)
+            
             timestamp = int(packet_info['timestamp'])
             with open(self._pcap_file, 'ab') as f:
                 # Simple packet record: timestamp (4 bytes) + size (2 bytes) + data

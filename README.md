@@ -423,7 +423,7 @@ python main.py /dev/ttyUSB0 --debug
 monitoring:
   packet_capture:
     enabled: true
-    pcap_file: /tmp/pyslirp.pcap
+    pcap_file: /var/log/pyslirp/pyslirp.pcap
 ```
 
 ### Virtual Environment Troubleshooting

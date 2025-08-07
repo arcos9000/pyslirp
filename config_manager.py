@@ -151,7 +151,7 @@ class HealthCheckConfig:
 class PacketCaptureConfig:
     """Packet capture configuration"""
     enabled: bool = False
-    pcap_file: str = "/tmp/pyslirp.pcap"
+    pcap_file: str = "/var/log/pyslirp/pyslirp.pcap"
     max_file_size: str = "100MB"
     rotate_files: bool = True
 

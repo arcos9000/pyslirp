@@ -155,7 +155,7 @@ monitoring:
   # Packet Capture (Debug)
   packet_capture:
     enabled: false
-    pcap_file: /tmp/pyslirp.pcap
+    pcap_file: /var/log/pyslirp/pyslirp.pcap
     max_file_size: 100MB
     rotate_files: true
     
