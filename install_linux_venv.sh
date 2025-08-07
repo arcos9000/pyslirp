@@ -49,12 +49,11 @@ check_root() {
 version_compare() {
     local version1=$1
     local version2=$2
-    printf '%s\n%s\n' "$version1" "$version2" | sort -V | head -n1
     [[ $(printf '%s\n%s\n' "$version1" "$version2" | sort -V | head -n1) == "$version2" ]]
 }
 
 find_suitable_python() {
-    print_status "Finding suitable Python installation..."
+    print_status "Finding suitable Python installation..." >&2
     
     # List of Python executables to try in order of preference
     local python_candidates=(
@@ -68,11 +67,11 @@ find_suitable_python() {
             python_version=$($python_cmd -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
             
             if [[ -n "$python_version" ]] && version_compare "$python_version" "$PYTHON_MIN_VERSION"; then
-                print_success "Found suitable Python: $python_cmd (version $python_version)"
+                print_success "Found suitable Python: $python_cmd (version $python_version)" >&2
                 echo "$python_cmd"
                 return 0
             else
-                print_warning "$python_cmd version $python_version is too old (need $PYTHON_MIN_VERSION+)"
+                print_warning "$python_cmd version $python_version is too old (need $PYTHON_MIN_VERSION+)" >&2
             fi
         fi
     done
@@ -229,13 +228,13 @@ install_python_packages_by_distro() {
 }
 
 install_python_if_needed() {
-    print_status "Checking Python installation requirements..."
+    print_status "Checking Python installation requirements..." >&2
     
     local python_cmd
     python_cmd=$(find_suitable_python)
     
     if [[ $? -ne 0 ]]; then
-        print_warning "No suitable Python found. Attempting to install Python 3.8+"
+        print_warning "No suitable Python found. Attempting to install Python 3.8+" >&2
         
         # Install Python using distro-specific method
         install_python_packages_by_distro
@@ -243,8 +242,8 @@ install_python_if_needed() {
         # Verify installation
         python_cmd=$(find_suitable_python)
         if [[ $? -ne 0 ]]; then
-            print_error "Failed to install suitable Python version"
-            print_error "Please install Python 3.8+ manually and try again"
+            print_error "Failed to install suitable Python version" >&2
+            print_error "Please install Python 3.8+ manually and try again" >&2
             exit 1
         fi
     fi
