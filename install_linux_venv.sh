@@ -10,7 +10,7 @@ INSTALL_DIR="/opt/pyslirp"
 CONFIG_DIR="/etc/pyslirp"
 LOG_DIR="/var/log/pyslirp"
 USER="pyslirp"
-GROUP="dialout"
+GROUP=""  # Will be detected dynamically
 VENV_DIR="$INSTALL_DIR/.venv"
 PYTHON_MIN_VERSION="3.8"
 
@@ -351,8 +351,32 @@ install_python_packages_venv() {
     done
 }
 
+detect_serial_group() {
+    # Detect the appropriate group for serial port access
+    local serial_groups=("dialout" "uucp" "serial" "tty")
+    
+    for group in "${serial_groups[@]}"; do
+        if getent group "$group" &>/dev/null; then
+            echo "$group"
+            return 0
+        fi
+    done
+    
+    # If no standard serial group exists, create dialout
+    print_warning "No standard serial group found, creating 'dialout' group"
+    groupadd dialout
+    echo "dialout"
+    return 0
+}
+
 create_user() {
     print_status "Creating system user..."
+    
+    # Detect appropriate serial group
+    local serial_group
+    serial_group=$(detect_serial_group)
+    
+    print_status "Using serial group: $serial_group"
     
     # Create pyslirp user if it doesn't exist
     if ! id "$USER" &>/dev/null; then
@@ -362,9 +386,12 @@ create_user() {
         print_status "User $USER already exists"
     fi
     
-    # Add user to dialout group for serial port access
-    usermod -a -G "$GROUP" "$USER"
-    print_success "Added $USER to $GROUP group"
+    # Add user to serial group for serial port access
+    usermod -a -G "$serial_group" "$USER"
+    print_success "Added $USER to $serial_group group"
+    
+    # Store the group for later use
+    GROUP="$serial_group"
 }
 
 create_directories() {
@@ -412,6 +439,33 @@ install_files() {
     chmod +x "$INSTALL_DIR"/main.py
     
     print_success "Application files installed"
+}
+
+configure_udev_rules() {
+    print_status "Configuring udev rules for serial ports..."
+    
+    cat > /etc/udev/rules.d/99-pyslirp-serial.rules << EOF
+# PyLiRP Serial Port Rules
+# Allow pyslirp user to access serial devices
+
+# USB serial devices
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", GROUP="$GROUP", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", GROUP="$GROUP", MODE="0660"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", GROUP="$GROUP", MODE="0660"
+
+# Generic USB serial
+SUBSYSTEM=="tty", KERNEL=="ttyUSB*", GROUP="$GROUP", MODE="0660"
+SUBSYSTEM=="tty", KERNEL=="ttyACM*", GROUP="$GROUP", MODE="0660"
+EOF
+    
+    # Reload udev rules
+    if command -v udevadm &> /dev/null; then
+        udevadm control --reload-rules
+        udevadm trigger
+        print_success "Udev rules configured for group: $GROUP"
+    else
+        print_warning "udevadm not found, udev rules created but not reloaded"
+    fi
 }
 
 create_systemd_service() {
@@ -559,6 +613,7 @@ show_post_install_info() {
     echo "Configuration: $CONFIG_DIR/config.yaml"
     echo "Logs: $LOG_DIR/"
     echo "Service User: $USER"
+    echo "Serial Group: $GROUP"
     echo
     echo "=== Python Environment ==="
     local venv_version
@@ -586,11 +641,19 @@ show_post_install_info() {
     echo "- Manual Python usage: $VENV_DIR/bin/python"
     echo "- Package management: $VENV_DIR/bin/pip"
     echo
+    echo "=== Serial Port Access ==="
+    echo "- Service runs as user '$USER' in group '$GROUP'"
+    echo "- For manual testing, add your user to serial group:"
+    echo "  sudo usermod -a -G $GROUP \$USER"
+    echo "  (then logout and login again)"
+    echo "- Check serial permissions: ls -l /dev/ttyUSB* /dev/ttyACM*"
+    echo
     echo "=== Troubleshooting ==="
     echo "- If Python packages are missing, recreate venv: rm -rf $VENV_DIR && $0"
     echo "- Check virtual environment: $VENV_DIR/bin/python --version"
     echo "- List installed packages: $VENV_DIR/bin/pip list"
     echo "- Service logs: journalctl -u pyslirp -f"
+    echo "- Serial group membership: groups $USER"
 }
 
 # Main installation flow
@@ -612,6 +675,7 @@ main() {
     install_python_packages_venv
     
     install_files
+    configure_udev_rules
     create_systemd_service
     create_wrapper_scripts
     setup_systemd
