@@ -59,6 +59,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows-specific documentation
 - Troubleshooting guides
 
+## [1.1.0] - 2024-08-07
+
+### Major Release: Enhanced Installation & Virtual Environment Support
+
+### Added
+- **Virtual Environment Support**: All installations now use isolated Python environments
+- **Multi-Distro Linux Support**: Added support for 10+ package managers
+  - APT (Debian/Ubuntu), DNF (Fedora/RHEL 8+), YUM (RHEL/CentOS 7)
+  - Pacman (Arch), Zypper (openSUSE), APK (Alpine), Portage (Gentoo)
+  - XBPS (Void Linux), PKG (FreeBSD)
+- **Windows Scoop Integration**: Modern package manager support with auto-installation
+- **Smart Python Management**: Auto-detection and installation of Python 3.8+
+- **Enhanced Installers**:
+  - `install_linux_venv.sh` - Comprehensive Linux installer with venv support
+  - `install_windows_venv.ps1` - Windows installer with Scoop + venv integration
+  - `install_pyslirp.sh/.bat` - Unified launcher scripts
+- **Development Dependencies**: Added `requirements-dev.txt` for development setup
+- **Project Archive**: Moved obsolete files to `.archive/` with documentation
+
+### Improved
+- **Installation Experience**: Streamlined, automatic, cross-platform
+- **Dependency Management**: Clear separation of required vs optional packages
+- **Error Handling**: Enhanced troubleshooting and recovery mechanisms
+- **Documentation**: Comprehensive virtual environment guides and troubleshooting
+- **Service Integration**: Virtual environment support in systemd and Windows services
+- **Python Detection**: Better handling of multiple Python versions
+
+### Fixed
+- RecoveryAction.RESTART error (changed to RecoveryAction.RESET)
+- Windows firewall rule issues in userspace mode
+- PowerShell script execution and error reporting
+- Virtual environment privilege handling with sudo/admin
+- COM port detection and permissions on Windows
+
+### Changed
+- **Project Structure**: Organized files into logical categories
+- **Installation Methods**: Replaced legacy installers with venv-aware versions
+- **Requirements**: Updated and clarified package dependencies
+- **Documentation**: Integrated platform-specific guides into main README
+
+### Deprecated
+- Legacy installers (moved to .archive/ for reference)
+- Global Python package installation (replaced with virtual environments)
+
+### Security
+- Enhanced userspace operation with no global system modifications
+- Improved isolation of dependencies in virtual environments
+- Better privilege handling for installation and service management
+
 ## [Unreleased]
 
 ### Planned Features
