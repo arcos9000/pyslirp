@@ -1,0 +1,30 @@
+# PyLiRP Windows-specific Dependencies
+# Additional dependencies for Windows support
+
+# Core dependencies (same as base requirements.txt)
+pyserial>=3.5
+pyserial-asyncio>=0.6
+PyYAML>=6.0
+aiohttp>=3.8.0
+prometheus-client>=0.15.0
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+python-socks>=2.0.0
+scapy>=2.4.0
+colorlog>=6.0.0
+psutil>=5.9.0
+cryptography>=3.4.0
+
+# Windows-specific dependencies
+pywin32>=305                    # Windows API access
+win10toast>=0.9                # Windows 10 toast notifications
+wmi>=1.5.1                     # WMI access for system information
+
+# Optional Windows enhancements
+comtypes>=1.1.0                # COM interface support
+pythonwin                      # Python Windows extensions (included with pywin32)
+pypiwin32                      # Ensures proper pywin32 installation
+
+# Additional Windows utilities (optional)
+windows-curses>=2.3.0          # Console improvements
+winshell>=0.6                  # Windows shell operations

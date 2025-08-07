@@ -1,0 +1,48 @@
+[Unit]
+Description=Python SLiRP PPP Bridge Service
+Documentation=https://github.com/your-repo/pyslirp
+After=network.target multi-user.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pyslirp
+Group=dialout
+WorkingDirectory=/opt/pyslirp
+ExecStartPre=/usr/bin/python3 -m pyslirp.config_manager --validate
+ExecStart=/usr/bin/python3 -m pyslirp.main --config /etc/pyslirp/config.yaml --daemon
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/pyslirp /var/run/pyslirp /tmp
+PrivateDevices=no
+DeviceAllow=/dev/ttyUSB* rw
+DeviceAllow=/dev/ttyACM* rw
+DeviceAllow=/dev/serial* rw
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=1024
+MemoryLimit=512M
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=PYSLIRP_LOG_LEVEL=INFO
+EnvironmentFile=-/etc/default/pyslirp
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pyslirp
+
+[Install]
+WantedBy=multi-user.target
+Alias=slirp.service
