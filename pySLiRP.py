@@ -1046,7 +1046,7 @@ class AsyncPPPHandler:
 class AsyncPPPNegotiator:
     """Complete PPP LCP/IPCP negotiation implementation (RFC 1661/1332)"""
     
-    def __init__(self, local_ip="10.0.0.1", remote_ip="10.0.0.2"):
+    def __init__(self, local_ip="10.0.0.1", remote_ip="10.0.0.2", is_server=True):
         # State tracking
         self.lcp_state = PPPState.INITIAL
         self.ipcp_state = PPPState.INITIAL
@@ -1058,6 +1058,7 @@ class AsyncPPPNegotiator:
         self.peer_magic_number = 0
         self.mru = 1500
         self.peer_mru = 1500
+        self.is_server = is_server  # Server waits, client initiates
         
         # Protocol state
         self.lcp_identifier = 0
@@ -1070,12 +1071,16 @@ class AsyncPPPNegotiator:
         self.echo_interval = 30.0
         self.last_echo_time = 0.0
         self.restart_timer = 3.0
+        self.negotiation_timeout = 10.0  # Timeout for initial negotiation
+        self.negotiation_start_time = 0.0
         
         # Event tracking
         self.awaiting_response = {}
         self.peer_options = {}
+        self.negotiation_initiated = False
         
-        logger.info(f"PPP Negotiator initialized - Local: {local_ip}, Remote: {remote_ip}")
+        role = "Server" if is_server else "Client"
+        logger.info(f"PPP Negotiator initialized [{role}] - Local: {local_ip}, Remote: {remote_ip}")
         logger.info(f"Magic Number: 0x{self.magic_number:08X}")
     
     def get_next_identifier(self, protocol: str) -> int:
@@ -1183,8 +1188,19 @@ class AsyncPPPNegotiator:
         logger.debug(f"Sending LCP Configure-Request (ID: {identifier})")
         return packet
     
-    async def handle_lcp_configure_request(self, packet: PPPPacket) -> bytes:
+    async def handle_lcp_configure_request(self, packet: PPPPacket, writer: asyncio.StreamWriter = None) -> bytes:
         """Handle LCP Configure-Request"""
+        # If we're a server and haven't initiated negotiation yet, do so now
+        if self.is_server and not self.negotiation_initiated and self.lcp_state == PPPState.STARTING:
+            self.negotiation_initiated = True
+            logger.info("Server received initial LCP Configure-Request from client")
+            # Send our own Configure-Request in response
+            if writer:
+                lcp_request = await self.send_lcp_configure_request(writer)
+                framed = AsyncPPPHandler.frame_data(lcp_request)
+                writer.write(framed)
+                await writer.drain()
+        
         options = self.parse_config_options(packet.data)
         response_options = []
         response_code = PPPCode.CONFIGURE_ACK
@@ -1474,7 +1490,7 @@ class AsyncPPPNegotiator:
     async def handle_lcp_packet(self, packet: PPPPacket, writer: asyncio.StreamWriter) -> Optional[bytes]:
         """Handle LCP packet"""
         if packet.code == PPPCode.CONFIGURE_REQUEST:
-            return await self.handle_lcp_configure_request(packet)
+            return await self.handle_lcp_configure_request(packet, writer)
         elif packet.code == PPPCode.CONFIGURE_ACK:
             await self.handle_lcp_configure_ack(packet)
             
@@ -1535,16 +1551,34 @@ class AsyncPPPNegotiator:
     
     async def start_negotiation(self, writer: asyncio.StreamWriter):
         """Start PPP negotiation process"""
-        logger.info("Starting PPP negotiation")
+        self.negotiation_start_time = time.time()
         
-        # Send initial LCP Configure-Request
-        lcp_request = await self.send_lcp_configure_request(writer)
-        framed = AsyncPPPHandler.frame_data(lcp_request)
-        writer.write(framed)
-        await writer.drain()
+        if not self.is_server:
+            # Client initiates negotiation
+            logger.info("Starting PPP negotiation as CLIENT - sending initial LCP Configure-Request")
+            self.negotiation_initiated = True
+            lcp_request = await self.send_lcp_configure_request(writer)
+            framed = AsyncPPPHandler.frame_data(lcp_request)
+            writer.write(framed)
+            await writer.drain()
+        else:
+            # Server waits for client to initiate
+            logger.info("Starting PPP negotiation as SERVER - waiting for client LCP Configure-Request")
+            self.lcp_state = PPPState.STARTING
     
     async def handle_keepalive(self, writer: asyncio.StreamWriter):
         """Handle periodic keepalive tasks"""
+        # Check if we need to timeout waiting for client
+        if (self.is_server and not self.negotiation_initiated and 
+            self.lcp_state == PPPState.STARTING and
+            time.time() - self.negotiation_start_time > self.negotiation_timeout):
+            logger.info("Server timeout waiting for client - initiating negotiation")
+            self.negotiation_initiated = True
+            lcp_request = await self.send_lcp_configure_request(writer)
+            framed = AsyncPPPHandler.frame_data(lcp_request)
+            writer.write(framed)
+            await writer.drain()
+        
         if await self.needs_echo():
             echo_request = await self.send_lcp_echo_request(writer)
             framed = AsyncPPPHandler.frame_data(echo_request)
@@ -1915,12 +1949,26 @@ class AsyncPPPBridge:
     """Main async PPP to services bridge"""
     
     def __init__(self, serial_port: str, baudrate: int = 115200,
-                 socks_host: Optional[str] = None, socks_port: int = 1080):
+                 socks_host: Optional[str] = None, socks_port: int = 1080,
+                 config: Optional[Any] = None):
         self.serial_port = serial_port
         self.baudrate = baudrate
+        
+        # Get IP configuration from config or use defaults
+        if config and hasattr(config, 'network'):
+            self.local_ip = getattr(config.network, 'local_ip', '10.0.0.1')
+            self.remote_ip = getattr(config.network, 'remote_ip', '10.0.0.2')
+        else:
+            self.local_ip = '10.0.0.1'
+            self.remote_ip = '10.0.0.2'
+            
+        # Determine if we're server or client based on IP
+        # Convention: 10.0.0.1 is server (host), 10.0.0.2 is client
+        is_server = (self.local_ip == "10.0.0.1")
+        
         self.ppp_handler = AsyncPPPHandler()
-        self.ppp_negotiator = AsyncPPPNegotiator()
-        self.tcp_stack = AsyncTCPStack()
+        self.ppp_negotiator = AsyncPPPNegotiator(self.local_ip, self.remote_ip, is_server)
+        self.tcp_stack = AsyncTCPStack(self.local_ip, self.remote_ip)
         self.proxy = AsyncServiceProxy(self.tcp_stack, socks_host, socks_port)
         self.negotiation_started = False
         
@@ -2056,7 +2104,9 @@ class AsyncPPPBridge:
     async def run(self):
         """Main async run loop"""
         logger.info(f"Starting async PPP bridge on {self.serial_port}")
-        logger.info(f"Client IP: 10.0.0.2, Server IP: 10.0.0.1")
+        role = "SERVER (Host)" if self.ppp_negotiator.is_server else "CLIENT"
+        logger.info(f"Running as: {role}")
+        logger.info(f"Local IP: {self.local_ip}, Remote IP: {self.remote_ip}")
         logger.info(f"Magic Number: 0x{self.ppp_negotiator.magic_number:08X}")
         logger.info(f"MRU: {self.ppp_negotiator.mru} bytes")
         

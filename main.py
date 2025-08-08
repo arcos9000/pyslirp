@@ -175,7 +175,8 @@ class PyLiRPApplication:
                 self.config.serial.port,
                 self.config.serial.baudrate,
                 socks_host,
-                socks_port
+                socks_port,
+                config=self.config
             )
             
             # Integrate components with PPP bridge
