@@ -2,7 +2,7 @@
 # This configuration disables file logging to work with read-only filesystems
 
 serial:
-  port: /dev/ttyUSB0  # Change to your serial port
+  port: /dev/ttyGS0  # PiKVM USB gadget serial port
   baudrate: 115200
   flow_control: hardware  # none/hardware/software
   timeout: 5.0
