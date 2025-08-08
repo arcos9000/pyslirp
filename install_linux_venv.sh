@@ -406,10 +406,11 @@ create_directories() {
     chown -R "$USER:$GROUP" "$INSTALL_DIR"
     chown -R "$USER:$GROUP" "$LOG_DIR" 
     chown -R "$USER:$GROUP" /var/run/pyslirp
-    chown root:root "$CONFIG_DIR"
+    # Config dir owned by root but readable by group
+    chown root:$GROUP "$CONFIG_DIR"
     
     chmod 755 "$INSTALL_DIR"
-    chmod 750 "$CONFIG_DIR"
+    chmod 755 "$CONFIG_DIR"  # Make directory accessible
     chmod 755 "$LOG_DIR"
     chmod 755 /var/run/pyslirp
     
@@ -432,6 +433,8 @@ install_files() {
     
     # Set permissions
     chmod 644 "$INSTALL_DIR"/*.py
+    # Config file should be readable by the pyslirp group
+    chown root:$GROUP "$CONFIG_DIR"/config.yaml
     chmod 640 "$CONFIG_DIR"/config.yaml
     
     # Make main script executable (though we'll use the venv python)
