@@ -417,14 +417,67 @@ create_directories() {
     print_success "Directories created"
 }
 
+select_deployment_mode() {
+    print_status "Configuring deployment mode..."
+    
+    echo
+    echo "Please select your PyLiRP deployment mode:"
+    echo
+    echo "1. HOST ONLY    - Expose local services to remote clients"
+    echo "                  (Remote clients connect to YOUR services)"
+    echo
+    echo "2. CLIENT ONLY  - Connect to remote services"
+    echo "                  (YOU connect to remote services on non-conflicting ports)"
+    echo
+    echo "3. HYBRID       - Both host and client (automatic +10000 port offset)"
+    echo "                  (Bidirectional access - best for most users)"
+    echo
+    
+    while true; do
+        read -p "Select deployment mode [1-3]: " choice
+        case $choice in
+            1)
+                DEPLOYMENT_MODE="host"
+                CONFIG_SOURCE="config_host.yaml"
+                break
+                ;;
+            2)
+                DEPLOYMENT_MODE="client" 
+                CONFIG_SOURCE="config_client.yaml"
+                break
+                ;;
+            3)
+                DEPLOYMENT_MODE="hybrid"
+                CONFIG_SOURCE="config_hybrid.yaml"
+                break
+                ;;
+            *)
+                echo "Please enter 1, 2, or 3"
+                ;;
+        esac
+    done
+    
+    print_success "Selected: $DEPLOYMENT_MODE mode"
+}
+
 install_files() {
     print_status "Installing application files..."
     
     # Copy Python modules
     cp "$SCRIPT_DIR"/*.py "$INSTALL_DIR/"
     
-    # Copy configuration files
-    cp "$SCRIPT_DIR"/config.yaml "$CONFIG_DIR/"
+    # Copy all configuration templates and deployment script
+    cp "$SCRIPT_DIR"/config*.yaml "$INSTALL_DIR/"
+    cp "$SCRIPT_DIR"/configure_deployment.sh "$INSTALL_DIR/" 2>/dev/null || true
+    
+    # Install the selected configuration
+    if [[ -f "$SCRIPT_DIR/$CONFIG_SOURCE" ]]; then
+        cp "$SCRIPT_DIR/$CONFIG_SOURCE" "$CONFIG_DIR/config.yaml"
+        print_success "Installed $DEPLOYMENT_MODE configuration"
+    else
+        cp "$SCRIPT_DIR"/config.yaml "$CONFIG_DIR/"
+        print_warning "Using default configuration (deployment-specific config not found)"
+    fi
     
     # Copy requirements files for reference
     if [[ -f "$SCRIPT_DIR/requirements.txt" ]]; then
@@ -613,6 +666,7 @@ show_post_install_info() {
     echo "Install Directory: $INSTALL_DIR"
     echo "Virtual Environment: $VENV_DIR" 
     echo "Configuration: $CONFIG_DIR/config.yaml"
+    echo "Deployment Mode: $DEPLOYMENT_MODE"
     echo "Logs: $LOG_DIR/"
     echo "Service User: $USER"
     echo "Serial Group: $GROUP"
@@ -650,12 +704,36 @@ show_post_install_info() {
     echo "  (then logout and login again)"
     echo "- Check serial permissions: ls -l /dev/ttyUSB* /dev/ttyACM*"
     echo
+    echo "=== Deployment Mode: $DEPLOYMENT_MODE ==="
+    case "$DEPLOYMENT_MODE" in
+        "host")
+            echo "HOST MODE - Exposing local services to remote clients:"
+            echo "- Remote clients can access your services:"
+            echo "  SSH: port 22, HTTP: port 80, HTTPS: port 443"
+            echo "- Make sure these services are running locally"
+            ;;
+        "client")
+            echo "CLIENT MODE - Connecting to remote services:"
+            echo "- Access remote services on these local ports:"
+            echo "  Remote SSH: localhost:2222"
+            echo "  Remote HTTP: localhost:8080"
+            echo "  Remote HTTPS: localhost:8443"
+            ;;
+        "hybrid")
+            echo "HYBRID MODE - Bidirectional access (+10000 offset):"
+            echo "- Your local services: SSH:22, HTTP:80, HTTPS:443"
+            echo "- Remote services: SSH:10022, HTTP:10080, HTTPS:10443"
+            echo "- Example: ssh user@localhost -p 10022 (remote SSH)"
+            ;;
+    esac
+    echo ""
     echo "=== Troubleshooting ==="
     echo "- If Python packages are missing, recreate venv: rm -rf $VENV_DIR && $0"
     echo "- Check virtual environment: $VENV_DIR/bin/python --version"
     echo "- List installed packages: $VENV_DIR/bin/pip list"
     echo "- Service logs: journalctl -u pyslirp -f"
     echo "- Serial group membership: groups $USER"
+    echo "- Change deployment mode: $INSTALL_DIR/configure_deployment.sh"
 }
 
 # Main installation flow
@@ -671,6 +749,9 @@ main() {
     
     create_user
     create_directories
+    
+    # Select deployment mode before installing files
+    select_deployment_mode
     
     # Create virtual environment and install packages
     create_virtual_environment "$python_cmd"

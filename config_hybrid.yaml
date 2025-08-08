@@ -1,0 +1,231 @@
+# PyLiRP Configuration - Hybrid Mode (Client + Host)
+# Automatic port offset method for bidirectional service access
+
+serial:
+  port: /dev/ttyUSB0  # Change to your serial port
+  baudrate: 115200
+  flow_control: hardware  # none/hardware/software
+  timeout: 5.0
+  write_timeout: 2.0
+
+network:
+  local_ip: 10.0.0.1    # This node's PPP IP
+  remote_ip: 10.0.0.2   # Remote node's PPP IP
+  mtu: 1500
+  netmask: 255.255.255.0
+
+ppp:
+  lcp_echo_interval: 30
+  lcp_echo_failure_threshold: 3
+  max_configure_requests: 10
+  restart_timeout: 3
+  negotiate_magic: true
+  negotiate_mru: true
+  negotiate_compression: true
+  default_mru: 1500
+  magic_number: null
+
+tcp:
+  initial_window_size: 8192
+  max_window_size: 65535
+  mss: 1460
+  retransmission_timeout_min: 200
+  retransmission_timeout_max: 60000
+  max_retransmissions: 5
+  keepalive_interval: 7200
+  keepalive_probes: 9
+  keepalive_probe_interval: 75
+  time_wait_timeout: 120
+  congestion_algorithm: reno
+  initial_cwnd: 10
+  slow_start_threshold: 65535
+  duplicate_ack_threshold: 3
+
+services:
+  # HYBRID MODE: Automatic port offset (+10000) for remote services
+  # This avoids conflicts with local services on standard ports
+  
+  # Remote services (PPP tunneled with port offset)
+  22: 
+    host: 127.0.0.1
+    port: 10022       # Remote SSH → local port 10022 (22 + 10000)
+    name: Remote-SSH
+    enabled: true
+    max_connections: 10
+    connection_timeout: 300
+  
+  80:
+    host: 127.0.0.1
+    port: 10080       # Remote HTTP → local port 10080 (80 + 10000)
+    name: Remote-HTTP
+    enabled: true
+    max_connections: 50
+    connection_timeout: 60
+    
+  443:
+    host: 127.0.0.1
+    port: 10443       # Remote HTTPS → local port 10443 (443 + 10000)
+    name: Remote-HTTPS
+    enabled: true
+    max_connections: 50
+    connection_timeout: 120
+    
+  3389:
+    host: 127.0.0.1
+    port: 13389       # Remote RDP → local port 13389 (3389 + 10000)
+    name: Remote-RDP
+    enabled: false
+    max_connections: 5
+    connection_timeout: 300
+    
+  5900:
+    host: 127.0.0.1
+    port: 15900       # Remote VNC → local port 15900 (5900 + 10000)
+    name: Remote-VNC
+    enabled: false
+    max_connections: 3
+    connection_timeout: 300
+    
+  # Additional services with offset
+  25:
+    host: 127.0.0.1
+    port: 10025       # Remote SMTP → local port 10025 (25 + 10000)
+    name: Remote-SMTP
+    enabled: false
+    max_connections: 10
+    connection_timeout: 60
+    
+  110:
+    host: 127.0.0.1
+    port: 10110       # Remote POP3 → local port 10110 (110 + 10000)
+    name: Remote-POP3
+    enabled: false
+    max_connections: 10
+    connection_timeout: 60
+    
+  993:
+    host: 127.0.0.1
+    port: 10993       # Remote IMAPS → local port 10993 (993 + 10000)
+    name: Remote-IMAPS
+    enabled: false
+    max_connections: 10
+    connection_timeout: 60
+
+proxy:
+  type: none
+  host: 127.0.0.1
+  port: 1080
+  username: null
+  password: null
+  connection_timeout: 10
+  enabled: false
+
+security:
+  allowed_ports: [22, 80, 443, 3389, 5900, 25, 110, 993, 995, 8080]
+  blocked_ips: []
+  rate_limiting:
+    enabled: true
+    connections_per_second: 15  # Higher limit for hybrid mode
+    burst_size: 30
+    window_size: 60
+  
+  connection_limits:
+    global_max_connections: 300  # Higher limits for bidirectional traffic
+    per_service_max: 75
+    per_ip_max: 30
+  
+  log_security_events: true
+  log_rejected_connections: true
+  log_rate_limit_violations: true
+
+logging:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  
+  file:
+    enabled: true
+    path: /var/log/pyslirp/pyslirp.log
+    max_size: 20MB     # Larger log files for hybrid mode
+    rotate_count: 10
+  
+  console:
+    enabled: true
+    color: true
+  
+  components:
+    ppp: INFO
+    tcp: INFO
+    serial: INFO
+    proxy: INFO
+    security: INFO
+    metrics: INFO
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  metrics_path: /metrics
+  
+  health_check:
+    enabled: true
+    port: 9091
+    path: /health
+    
+  packet_capture:
+    enabled: false
+    pcap_file: /var/log/pyslirp/pyslirp.pcap
+    max_file_size: 200MB  # Larger capture files for hybrid mode
+    rotate_files: true
+    
+  performance:
+    track_connection_stats: true
+    track_bandwidth: true
+    track_latency: true
+    stats_interval: 30
+
+error_recovery:
+  auto_reconnect_serial: true
+  serial_reconnect_delay: 5
+  max_serial_reconnect_attempts: 15  # More retries for hybrid mode
+  
+  service_retry_delay: 1
+  max_service_retry_attempts: 5
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 8  # Higher threshold for hybrid mode
+    recovery_timeout: 60
+    half_open_max_calls: 5
+  
+  ppp_negotiation_timeout: 30
+  tcp_connection_cleanup_interval: 45  # More frequent cleanup
+  orphaned_connection_timeout: 300
+
+development:
+  debug_packets: false
+  simulate_packet_loss: false
+  packet_loss_rate: 0.0
+  simulate_latency: false
+  artificial_latency_ms: 0
+  
+  mock_services:
+    enabled: false
+    echo_port: 7777
+    discard_port: 7778
+
+# HYBRID MODE NOTES:
+# 
+# Port Mapping Strategy:
+# - Remote services are mapped to local ports using +10000 offset
+# - This allows local services to run on standard ports (22, 80, 443)
+# - While remote services are accessible on offset ports (10022, 10080, 10443)
+#
+# Usage Examples:
+# - Local SSH: ssh user@localhost (port 22)
+# - Remote SSH: ssh user@localhost -p 10022
+# - Local HTTP: http://localhost (port 80)  
+# - Remote HTTP: http://localhost:10080
+#
+# Benefits:
+# - No port conflicts between local and remote services
+# - Predictable port mapping (original_port + 10000)
+# - Supports bidirectional service access
+# - Easy to remember offset pattern

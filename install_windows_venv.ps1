@@ -63,6 +63,58 @@ function Write-Error {
     Write-Host "[ERROR] $Message" -ForegroundColor $Red
 }
 
+function Select-DeploymentMode {
+    Write-Host ""
+    Write-Host "PyLiRP Deployment Mode Selection" -ForegroundColor $Blue
+    Write-Host "=================================" -ForegroundColor $Blue
+    Write-Host ""
+    Write-Host "Please select your deployment mode:"
+    Write-Host ""
+    Write-Host "1. HOST ONLY    - Expose local services to remote clients"
+    Write-Host "                  (Remote clients connect to YOUR services)"
+    Write-Host ""
+    Write-Host "2. CLIENT ONLY  - Connect to remote services"
+    Write-Host "                  (YOU connect to remote services on non-conflicting ports)"
+    Write-Host ""
+    Write-Host "3. HYBRID       - Both host and client (automatic +10000 port offset)"
+    Write-Host "                  (Bidirectional access - best for most users)" -ForegroundColor $Green
+    Write-Host ""
+    
+    do {
+        $choice = Read-Host "Select deployment mode [1-3]"
+        switch ($choice) {
+            "1" {
+                $deploymentMode = "host"
+                $configSource = "config_host.yaml"
+                Write-Success "Selected: HOST mode"
+                break
+            }
+            "2" {
+                $deploymentMode = "client"
+                $configSource = "config_client.yaml"
+                Write-Success "Selected: CLIENT mode"
+                break
+            }
+            "3" {
+                $deploymentMode = "hybrid"
+                $configSource = "config_hybrid.yaml"
+                Write-Success "Selected: HYBRID mode"
+                break
+            }
+            default {
+                Write-Host "Please enter 1, 2, or 3" -ForegroundColor $Yellow
+                continue
+            }
+        }
+        break
+    } while ($true)
+    
+    return @{
+        Mode = $deploymentMode
+        ConfigSource = $configSource
+    }
+}
+
 function Test-AdminPrivileges {
     try {
         $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -549,7 +601,7 @@ function New-InstallationDirectories {
 }
 
 function Copy-ApplicationFiles {
-    param($Paths)
+    param($Paths, $DeploymentConfig)
     
     Write-Status "Installing application files..."
     
@@ -561,8 +613,20 @@ function Copy-ApplicationFiles {
             Write-Status "Copied: $($file.Name)"
         }
         
-        # Copy configuration template
-        $configSource = if (Test-Path "config.yaml") { "config.yaml" } else { $null }
+        # Copy all configuration templates
+        $configFiles = Get-ChildItem -Path "config*.yaml" -ErrorAction SilentlyContinue
+        foreach ($configFile in $configFiles) {
+            Copy-Item $configFile.FullName -Destination $Paths.InstallDir -Force
+            Write-Status "Copied: $($configFile.Name)"
+        }
+        
+        # Copy deployment configuration script if it exists
+        if (Test-Path "configure_deployment.sh") {
+            Copy-Item "configure_deployment.sh" -Destination $Paths.InstallDir -Force
+        }
+        
+        # Install the selected deployment configuration
+        $configSource = $DeploymentConfig.ConfigSource
         $configDest = Join-Path $Paths.ConfigDir "config.yaml"
         
         if ($configSource -and (!(Test-Path $configDest) -or $Force)) {
@@ -700,7 +764,7 @@ function Install-UserSpaceService {
 }
 
 function Show-PostInstallInfo {
-    param($Paths, $StartupMethod)
+    param($Paths, $StartupMethod, $DeploymentConfig)
     
     Write-Success "PyLiRP Windows installation with virtual environment completed!"
     
@@ -710,6 +774,7 @@ function Show-PostInstallInfo {
     Write-Host ""
     Write-Host "=== Installation Summary ===" -ForegroundColor Yellow
     Write-Host "Mode: $($Paths.Mode)"
+    Write-Host "Deployment Mode: $($DeploymentConfig.Mode)"
     Write-Host "Install Path: $($Paths.InstallDir)"
     Write-Host "Config Path: $($Paths.ConfigDir)"  
     Write-Host "Log Path: $($Paths.LogDir)"
@@ -731,6 +796,30 @@ function Show-PostInstallInfo {
     Write-Host "Pip Executable: $(Join-Path $Paths.VenvDir 'Scripts\pip.exe')"
     Write-Host "Add packages: $(Join-Path $Paths.VenvDir 'Scripts\pip.exe') install <package>"
     Write-Host "List packages: $(Join-Path $Paths.VenvDir 'Scripts\pip.exe') list"
+    
+    Write-Host ""
+    Write-Host "=== Deployment Mode: $($DeploymentConfig.Mode) ===" -ForegroundColor Yellow
+    switch ($DeploymentConfig.Mode) {
+        "host" {
+            Write-Host "HOST MODE - Exposing local services to remote clients:"
+            Write-Host "- Remote clients can access your services:"
+            Write-Host "  SSH: port 22, HTTP: port 80, HTTPS: port 443"
+            Write-Host "- Make sure these services are running locally"
+        }
+        "client" {
+            Write-Host "CLIENT MODE - Connecting to remote services:"
+            Write-Host "- Access remote services on these local ports:"
+            Write-Host "  Remote SSH: localhost:2222"
+            Write-Host "  Remote HTTP: localhost:8080"
+            Write-Host "  Remote HTTPS: localhost:8443"
+        }
+        "hybrid" {
+            Write-Host "HYBRID MODE - Bidirectional access (+10000 offset):"
+            Write-Host "- Your local services: SSH:22, HTTP:80, HTTPS:443"
+            Write-Host "- Remote services: SSH:10022, HTTP:10080, HTTPS:10443"
+            Write-Host "- Example: ssh user@localhost -p 10022 (remote SSH)"
+        }
+    }
     
     Write-Host ""
     Write-Host "=== Commands ===" -ForegroundColor Yellow
@@ -807,29 +896,33 @@ function Install-PyLiRPUserspace {
         return $false
     }
     
-    # Step 5: Install Python packages in virtual environment
-    Write-Status "Step 5: Installing Python packages in virtual environment..."
+    # Step 5: Select deployment mode
+    Write-Status "Step 5: Selecting deployment configuration..."
+    $deploymentConfig = Select-DeploymentMode
+    
+    # Step 6: Install Python packages in virtual environment
+    Write-Status "Step 6: Installing Python packages in virtual environment..."
     if (-not (Install-PythonPackages -Paths $paths)) {
         Write-Error "Failed to install Python packages"
         return $false
     }
     
-    # Step 6: Copy application files
-    Write-Status "Step 6: Copying application files..."
-    if (-not (Copy-ApplicationFiles -Paths $paths)) {
+    # Step 7: Copy application files with deployment configuration
+    Write-Status "Step 7: Copying application files..."
+    if (-not (Copy-ApplicationFiles -Paths $paths -DeploymentConfig $deploymentConfig)) {
         Write-Error "Failed to copy application files"
         return $false
     }
     
-    # Step 7: Create startup scripts
-    Write-Status "Step 7: Creating startup scripts..."
+    # Step 8: Create startup scripts
+    Write-Status "Step 8: Creating startup scripts..."
     if (-not (New-StartupScripts -Paths $paths)) {
         Write-Warning "Failed to create startup scripts (non-critical)"
     }
     
-    # Step 8: Install startup service if requested
+    # Step 9: Install startup service if requested
     if (-not $NoAutoStart -and $StartupMethod -ne "manual") {
-        Write-Status "Step 8: Installing startup service ($StartupMethod)..."
+        Write-Status "Step 9: Installing startup service ($StartupMethod)..."
         if (-not (Install-UserSpaceService -Paths $paths -StartupMethod $StartupMethod)) {
             Write-Warning "Failed to install startup service (non-critical)"
         }
@@ -838,7 +931,7 @@ function Install-PyLiRPUserspace {
     }
     
     # Show completion info
-    Show-PostInstallInfo -Paths $paths -StartupMethod $StartupMethod
+    Show-PostInstallInfo -Paths $paths -StartupMethod $StartupMethod -DeploymentConfig $deploymentConfig
     
     return $true
 }
