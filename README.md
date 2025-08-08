@@ -65,10 +65,10 @@ If installing manually:
    - Installs all dependencies in the virtual environment
    - No admin privileges required for userspace installation
 
-3. **Edit configuration** to set your COM port:
+3. **Edit configuration** to set your serial port:
    ```yaml
    serial:
-     port: COM7  # Change to your serial port
+     port: COM1  # Change to your serial port
    ```
 
 4. **Start PyLiRP** (uses virtual environment automatically):
@@ -417,7 +417,7 @@ source ~/.pyslirp-venv/bin/activate
 python main.py /dev/ttyUSB0 --debug
 
 # Windows (userspace installation)
-.venv\Scripts\python.exe main.py COM7 --debug
+.venv\Scripts\python.exe main.py COM1 --debug
 
 # Enable packet capture - Edit config.yaml:
 monitoring:

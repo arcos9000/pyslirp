@@ -613,11 +613,11 @@ function Copy-ApplicationFiles {
             Write-Status "Copied: $($file.Name)"
         }
         
-        # Copy all configuration templates
-        $configFiles = Get-ChildItem -Path "config*.yaml" -ErrorAction SilentlyContinue
-        foreach ($configFile in $configFiles) {
+        # Copy deployment configuration templates for reference (not the main config.yaml)
+        $configTemplates = Get-ChildItem -Path "config_*.yaml" -ErrorAction SilentlyContinue
+        foreach ($configFile in $configTemplates) {
             Copy-Item $configFile.FullName -Destination $Paths.InstallDir -Force
-            Write-Status "Copied: $($configFile.Name)"
+            Write-Status "Copied template: $($configFile.Name)"
         }
         
         # Copy deployment configuration script if it exists
@@ -625,7 +625,7 @@ function Copy-ApplicationFiles {
             Copy-Item "configure_deployment.sh" -Destination $Paths.InstallDir -Force
         }
         
-        # Install the selected deployment configuration
+        # Install ONLY the selected deployment configuration to config directory
         $configSource = $DeploymentConfig.ConfigSource
         $configDest = Join-Path $Paths.ConfigDir "config.yaml"
         

@@ -164,7 +164,7 @@ What you expected to happen.
 - OS: [e.g., Windows 10, Ubuntu 20.04]
 - Python Version: [e.g., 3.9.0]
 - PyLiRP Version: [e.g., 1.0.0]
-- Serial Device: [e.g., COM7, /dev/ttyUSB0]
+- Serial Device: [e.g., COM1, /dev/ttyUSB0]
 
 **Configuration**
 ```yaml

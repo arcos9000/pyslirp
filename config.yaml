@@ -2,7 +2,7 @@
 # Complete configuration for Python SLiRP PPP Bridge
 
 serial:
-  port: COM7
+  port: /dev/ttyUSB0  # Change to your serial port (Linux: /dev/ttyUSB0, Windows: COM1)
   baudrate: 115200
   flow_control: hardware  # none/hardware/software
   timeout: 5.0

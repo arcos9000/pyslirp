@@ -466,17 +466,21 @@ install_files() {
     # Copy Python modules
     cp "$SCRIPT_DIR"/*.py "$INSTALL_DIR/"
     
-    # Copy all configuration templates and deployment script
-    cp "$SCRIPT_DIR"/config*.yaml "$INSTALL_DIR/"
+    # Copy deployment configuration templates for reference (not the main config.yaml)
+    cp "$SCRIPT_DIR"/config_*.yaml "$INSTALL_DIR/" 2>/dev/null || true
     cp "$SCRIPT_DIR"/configure_deployment.sh "$INSTALL_DIR/" 2>/dev/null || true
     
-    # Install the selected configuration
+    # Install ONLY the selected configuration to /etc/pyslirp
     if [[ -f "$SCRIPT_DIR/$CONFIG_SOURCE" ]]; then
         cp "$SCRIPT_DIR/$CONFIG_SOURCE" "$CONFIG_DIR/config.yaml"
         print_success "Installed $DEPLOYMENT_MODE configuration"
     else
-        cp "$SCRIPT_DIR"/config.yaml "$CONFIG_DIR/"
-        print_warning "Using default configuration (deployment-specific config not found)"
+        # Fallback: create a default config from template
+        print_warning "Deployment-specific config not found, creating default"
+        cp "$SCRIPT_DIR"/config.yaml "$CONFIG_DIR/" 2>/dev/null || {
+            print_error "No configuration files found!"
+            exit 1
+        }
     fi
     
     # Copy requirements files for reference
