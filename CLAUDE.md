@@ -40,10 +40,17 @@ Creating a modern Python replacement for SLiRP (Serial Line IP) that operates **
 [Local SSH Server or SOCKS Proxy]
 ```
 
-## Current Implementation Status - v1.1.0 (Production Ready)
+## Current Implementation Status - v1.2.0 (Deployment Ready + Configuration Fixed)
 
-### 🎯 **COMPLETED - Full Production System**
-The PyLiRP implementation is now **production-ready** with comprehensive enterprise features:
+### 🎯 **COMPLETED - Full Production System with Deployment Modes**
+The PyLiRP implementation is now **production-ready** with comprehensive enterprise features and deployment flexibility:
+
+### 🚨 **CURRENT STATUS: Ready for PiKVM Deployment Testing**
+**Last Known Issue**: Serial port permission issue on PiKVM system
+- Configuration file precedence issues have been resolved
+- Deployment mode system is complete and functional
+- Read-only filesystem compatibility implemented
+- Need to resolve serial device access permissions on target PiKVM
 
 #### **Core Network Stack** ✅
 1. **PPP Frame Handler**: Complete RFC 1661/1332 compliant PPP implementation
@@ -86,10 +93,13 @@ The PyLiRP implementation is now **production-ready** with comprehensive enterpr
 - Cross-platform installation with smart dependency management
 - Service management (systemd/Windows Task Scheduler)
 - Comprehensive error recovery and logging
+- **NEW**: Deployment mode system (host/client/hybrid) with automatic port conflict resolution
+- **NEW**: Configuration file precedence fixes and cleanup tools
+- **NEW**: PiKVM-specific read-only filesystem compatibility
 
 ## 🏗️ **Implementation Architecture**
 
-### **Current Project Structure (v1.1.0)**
+### **Current Project Structure (v1.2.0)**
 ```
 pyslirp/
 ├── Core Application
@@ -275,8 +285,9 @@ PyLiRP has evolved from a proof-of-concept to a **production-grade enterprise so
 - 🏆 **Battle-Tested**: Comprehensive testing framework with multiple test categories
 
 ### **GitHub Repository Status**
-- **Latest Release**: v1.1.0 (Production Ready)
+- **Latest Release**: v1.2.0 (Deployment Ready)
 - **Installation Success**: 95%+ across all supported platforms
+- **New Features**: Deployment modes, configuration cleanup, PiKVM support
 - **Documentation**: Complete with troubleshooting guides
 - **Community Ready**: Contribution guidelines, issue templates, release process
 
@@ -298,10 +309,55 @@ PyLiRP has evolved from a proof-of-concept to a **production-grade enterprise so
 
 **PyLiRP is now ready for enterprise deployment and production use.** 🚀
 
+## 🎯 **CURRENT DEPLOYMENT STATUS - PiKVM Testing Phase**
+
+### **Recent Major Updates (v1.2.0)**
+1. ✅ **Deployment Mode System**: Host-only, client-only, and hybrid configurations
+2. ✅ **Configuration Precedence Fixed**: Resolved config file conflicts that caused hardcoded values
+3. ✅ **PiKVM Compatibility**: Read-only filesystem support and ttyGS0 device handling
+4. ✅ **Enhanced Installers**: Both Linux and Windows installers updated with deployment selection
+
+### **Current Issue Being Resolved**
+**Serial Port Permission Error on PiKVM**
+- **Error**: "Operation not permitted" when accessing serial device
+- **Status**: Configuration precedence issues resolved, now focusing on device permissions
+- **Location**: Target PiKVM system - requires on-device troubleshooting
+
+### **Available Troubleshooting Tools**
+Created comprehensive diagnostic and fix scripts:
+
+1. **`cleanup_config_mess.sh`** - Fixes configuration file conflicts ✅
+2. **`debug_pikvm_serial.sh`** - Comprehensive serial permission diagnostics
+3. **`emergency_fix.sh`** - Immediate serial permission fix
+4. **`fix_pikvm_serial.sh`** - PiKVM-specific serial setup
+5. **`fix_pikvm_readonly.sh`** - PiKVM read-only filesystem configuration
+6. **`config_pikvm.yaml`** - PiKVM-optimized configuration template
+
+### **Next Steps for PiKVM Deployment**
+1. **Verify Configuration**: Ensure correct config file is being read
+2. **Fix Serial Permissions**: Run diagnostic scripts on PiKVM
+3. **Test PPP Connection**: Once permissions resolved, test end-to-end connectivity
+4. **Monitor and Optimize**: Use monitoring tools for performance tuning
+
+### **Key Commands for PiKVM Troubleshooting**
+```bash
+# Check service logs
+journalctl -u pyslirp -n 50
+
+# Run configuration cleanup
+sudo ./cleanup_config_mess.sh
+
+# Debug serial permissions
+sudo ./debug_pikvm_serial.sh
+
+# Quick permission fix
+sudo ./emergency_fix.sh
+```
+
 ---
 
-*This document represents the complete technical evolution of PyLiRP from concept to production-ready enterprise solution. All enhancement proposals have been successfully implemented and deployed.*
+*This document represents the complete technical evolution of PyLiRP from concept to production-ready enterprise solution. Currently in final deployment testing phase for PiKVM integration.*
 
 **Repository**: https://github.com/arcos9000/pyslirp  
 **License**: MIT  
-**Status**: Production Ready v1.1.0
+**Status**: Production Ready v1.2.0 (PiKVM Deployment Testing)
