@@ -600,16 +600,26 @@ class TCPStateMachine:
             response_flags = TCPFlags.SYN | TCPFlags.ACK
             options_data = self._build_syn_options(conn)
             
-            segment = self._create_tcp_segment(
+            logger.info(f"Creating SYN+ACK: {segment_info['dst_port']}->{segment_info['src_port']} seq={conn.initial_seq} ack={conn.rcv_nxt}")
+            
+            tcp_segment = self._create_tcp_segment(
                 tcp_stack, segment_info,
                 seq=conn.initial_seq, ack=conn.rcv_nxt,
                 flags=response_flags, options=options_data
             )
             
-            # Set retransmission timer
-            await self._set_retransmission_timer(conn, segment)
+            # Create IP packet containing the TCP segment
+            ip_packet = tcp_stack.create_ip_packet(
+                segment_info['dst_ip'], segment_info['src_ip'],
+                tcp_segment
+            )
             
-            return segment
+            logger.info(f"SYN+ACK IP packet created: {len(ip_packet)} bytes")
+            
+            # Set retransmission timer
+            await self._set_retransmission_timer(conn, tcp_segment)
+            
+            return ip_packet
             
         return None
     
@@ -2029,6 +2039,11 @@ class AsyncPPPBridge:
         
         # Process through enhanced TCP stack
         response = await self.tcp_stack.process_tcp_segment(packet_info, writer)
+        
+        if response:
+            logger.debug(f"TCP stack generated {len(response)} byte response")
+        else:
+            logger.debug("TCP stack generated no response")
         
         # Handle connection establishment for service proxy
         if response:
