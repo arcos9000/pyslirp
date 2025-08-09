@@ -100,7 +100,7 @@ class TCPPortForwarder:
     
     async def _send_syn(self, conn: ForwardedConnection):
         """Send TCP SYN packet through PPP"""
-        logger.debug(f"Sending SYN for port {conn.synthetic_port} -> {conn.remote_ip}:{conn.remote_port}")
+        logger.info(f"Sending SYN: {conn.synthetic_port} -> {conn.remote_ip}:{conn.remote_port} (seq={conn.seq_num})")
         
         # Create TCP SYN packet
         tcp_segment = self._create_tcp_segment(
@@ -120,6 +120,7 @@ class TCPPortForwarder:
         )
         
         conn.state = "SYN_SENT"
+        logger.info(f"SYN sent, connection {conn.synthetic_port} now in SYN_SENT state")
     
     async def _handle_connection(self, conn: ForwardedConnection):
         """Handle the forwarded connection"""
@@ -290,8 +291,11 @@ class TCPPortForwarder:
         framed = AsyncPPPHandler.frame_data(ppp_frame)
         
         if hasattr(self.ppp_bridge, 'serial_writer'):
+            logger.debug(f"Sending {len(framed)} bytes through serial: {src_ip}->{dst_ip}")
             self.ppp_bridge.serial_writer.write(framed)
             await self.ppp_bridge.serial_writer.drain()
+        else:
+            logger.error("No serial writer available - packet not sent!")
     
     def _create_ip_packet(self, src_ip: bytes, dst_ip: bytes, payload: bytes) -> bytes:
         """Create an IP packet"""
@@ -337,17 +341,21 @@ class TCPPortForwarder:
     async def handle_incoming_packet(self, packet_info: Dict):
         """Handle incoming TCP packet from PPP for our forwarded connections"""
         dst_port = packet_info.get('dst_port')
+        src_port = packet_info.get('src_port')
+        flags = packet_info.get('flags', 0)
+        
+        logger.debug(f"Forwarder received packet: {src_port}->{dst_port}, flags=0x{flags:02x}")
         
         if dst_port not in self.connections:
+            logger.debug(f"No connection found for port {dst_port}")
             return None
         
         conn = self.connections[dst_port]
-        flags = packet_info.get('flags', 0)
         
         # Handle based on current state
         if conn.state == "SYN_SENT" and (flags & 0x12) == 0x12:  # SYN|ACK
             # Connection accepted
-            logger.debug(f"Received SYN|ACK for port {dst_port}")
+            logger.info(f"Received SYN|ACK for port {dst_port} - connection established!")
             conn.ack_num = packet_info.get('seq_num', 0) + 1
             conn.state = "ESTABLISHED"
             

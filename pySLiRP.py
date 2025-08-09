@@ -1990,25 +1990,42 @@ class AsyncPPPBridge:
         
         # If we're a client and have a forwarder, check if this packet is for it
         if not self.ppp_negotiator.is_server and self.tcp_forwarder:
-            # Let the forwarder handle packets for its connections
-            await self.tcp_forwarder.handle_incoming_packet(packet_info)
+            # Check if this packet is for a forwarded connection
+            dst_port = packet_info.get('dst_port')
+            if dst_port in self.tcp_forwarder.connections:
+                # Let the forwarder handle packets for its connections
+                await self.tcp_forwarder.handle_incoming_packet(packet_info)
+                return None  # Packet handled by forwarder
         
         # Check if this is for a known service (server mode)
-        if (self.ppp_negotiator.is_server and
-            packet_info['flags'] & TCPFlags.SYN and 
-            not (packet_info['flags'] & TCPFlags.ACK) and
-            packet_info['dst_port'] in self.proxy.services):
+        if self.ppp_negotiator.is_server:
+            src_port = packet_info.get('src_port', 0)
+            dst_port = packet_info.get('dst_port', 0)
+            flags = packet_info.get('flags', 0)
             
-            # For SYN to known service, set up service connection
-            key = (packet_info['src_port'], packet_info['dst_port'])
-            service_host, service_port = self.proxy.services[packet_info['dst_port']]
-            reader, writer_svc = await self.proxy.connect_to_service(
-                service_host, service_port
-            )
+            logger.debug(f"Server received TCP packet: {src_port}->{dst_port}, flags=0x{flags:02x}")
             
-            if reader and writer_svc:
-                # Store service connection info for later use
-                self.proxy.pending_connections[key] = (reader, writer_svc)
+            if (flags & TCPFlags.SYN and 
+                not (flags & TCPFlags.ACK) and
+                dst_port in self.proxy.services):
+                
+                logger.info(f"Server received SYN for service port {dst_port}")
+                
+                # For SYN to known service, set up service connection
+                key = (src_port, dst_port)
+                service_host, service_port = self.proxy.services[dst_port]
+                reader, writer_svc = await self.proxy.connect_to_service(
+                    service_host, service_port
+                )
+                
+                if reader and writer_svc:
+                    # Store service connection info for later use
+                    self.proxy.pending_connections[key] = (reader, writer_svc)
+                    logger.info(f"Service connection prepared: {service_host}:{service_port}")
+                else:
+                    logger.error(f"Failed to connect to service {service_host}:{service_port}")
+            elif dst_port not in self.proxy.services:
+                logger.debug(f"No service configured for port {dst_port}")
         
         # Process through enhanced TCP stack
         response = await self.tcp_stack.process_tcp_segment(packet_info, writer)
