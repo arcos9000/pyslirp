@@ -1795,23 +1795,33 @@ class AsyncServiceProxy:
     
     def __init__(self, tcp_stack: AsyncTCPStack, 
                  socks_host: Optional[str] = None,
-                 socks_port: int = 1080):
+                 socks_port: int = 1080,
+                 config: Optional[Any] = None):
         self.tcp_stack = tcp_stack
         self.socks_host = socks_host
         self.socks_port = socks_port
         self.service_tasks = {}
         self.pending_connections = {}  # Track pending service connections
         
-        # Service port mapping
-        self.services = {
-            22: ('127.0.0.1', 22),    # SSH
-            80: ('127.0.0.1', 80),    # HTTP
-            443: ('127.0.0.1', 443),  # HTTPS
-            8080: ('127.0.0.1', 8080),
-            3000: ('127.0.0.1', 3000),
-            5000: ('127.0.0.1', 5000),
-            8000: ('127.0.0.1', 8000),
-        }
+        # Service port mapping from config
+        self.services = {}
+        if config and hasattr(config, 'services'):
+            for port, service_config in config.services.items():
+                if service_config.enabled:
+                    self.services[int(port)] = (service_config.host, service_config.port)
+                    logger.info(f"Service mapping: {port} -> {service_config.host}:{service_config.port} ({service_config.name})")
+        else:
+            # Fallback to hardcoded mappings
+            self.services = {
+                22: ('127.0.0.1', 22),    # SSH
+                80: ('127.0.0.1', 80),    # HTTP
+                443: ('127.0.0.1', 443),  # HTTPS
+                8080: ('127.0.0.1', 8080),
+                3000: ('127.0.0.1', 3000),
+                5000: ('127.0.0.1', 5000),
+                8000: ('127.0.0.1', 8000),
+            }
+            logger.info("Using fallback service mappings")
     
     async def connect_through_socks(self, target_host: str, 
                                    target_port: int) -> Tuple[Optional[asyncio.StreamReader], 
@@ -1953,6 +1963,7 @@ class AsyncPPPBridge:
                  config: Optional[Any] = None):
         self.serial_port = serial_port
         self.baudrate = baudrate
+        self.config = config  # Store config for later use
         
         # Get IP configuration from config or use defaults
         if config and hasattr(config, 'network'):
@@ -1969,15 +1980,22 @@ class AsyncPPPBridge:
         self.ppp_handler = AsyncPPPHandler()
         self.ppp_negotiator = AsyncPPPNegotiator(self.local_ip, self.remote_ip, is_server)
         self.tcp_stack = AsyncTCPStack(self.local_ip, self.remote_ip)
-        self.proxy = AsyncServiceProxy(self.tcp_stack, socks_host, socks_port)
+        self.proxy = AsyncServiceProxy(self.tcp_stack, socks_host, socks_port, config)
         self.negotiation_started = False
+        self.tcp_forwarder = None  # Will be initialized for client mode
         
     async def handle_tcp_packet(self, packet_info: Dict, 
                                writer: asyncio.StreamWriter) -> Optional[bytes]:
         """Process TCP packet using enhanced state machine"""
         
-        # Check if this is for a known service
-        if (packet_info['flags'] & TCPFlags.SYN and 
+        # If we're a client and have a forwarder, check if this packet is for it
+        if not self.ppp_negotiator.is_server and self.tcp_forwarder:
+            # Let the forwarder handle packets for its connections
+            await self.tcp_forwarder.handle_incoming_packet(packet_info)
+        
+        # Check if this is for a known service (server mode)
+        if (self.ppp_negotiator.is_server and
+            packet_info['flags'] & TCPFlags.SYN and 
             not (packet_info['flags'] & TCPFlags.ACK) and
             packet_info['dst_port'] in self.proxy.services):
             
@@ -2019,6 +2037,9 @@ class AsyncPPPBridge:
                           writer: asyncio.StreamWriter):
         """Read from serial port and process PPP frames"""
         try:
+            # Store writer for port forwarding
+            self.serial_writer = writer
+            
             # Start PPP negotiation
             if not self.negotiation_started:
                 await self.ppp_negotiator.start_negotiation(writer)
@@ -2027,6 +2048,10 @@ class AsyncPPPBridge:
             # Create keepalive and timer processing tasks
             keepalive_task = asyncio.create_task(self.keepalive_handler(writer))
             timer_task = asyncio.create_task(self.tcp_timer_handler())
+            
+            # Wait for PPP to be ready before starting client forwarders
+            if not self.ppp_negotiator.is_server:
+                asyncio.create_task(self._start_client_forwarders())
             
             while True:
                 data = await reader.read(1024)
@@ -2101,6 +2126,31 @@ class AsyncPPPBridge:
         except Exception as e:
             logger.error(f"TCP timer handler error: {e}")
     
+    async def _start_client_forwarders(self):
+        """Start TCP forwarders for client mode"""
+        # Wait for PPP negotiation to complete
+        while not self.ppp_negotiator.is_ready_for_ip():
+            await asyncio.sleep(1)
+        
+        logger.info("PPP ready - starting client TCP forwarders")
+        
+        try:
+            from tcp_forwarder import TCPPortForwarder
+            self.tcp_forwarder = TCPPortForwarder(self)
+            
+            # Get config or use defaults
+            config = getattr(self, 'config', None)
+            await self.tcp_forwarder.start_forwarders(config)
+            
+            logger.info("")
+            logger.info("Client port forwards active:")
+            logger.info("  SSH:   ssh localhost -p 2222")
+            logger.info("  HTTP:  http://localhost:8080")
+            logger.info("  HTTPS: https://localhost:8443")
+            
+        except Exception as e:
+            logger.error(f"Failed to start client forwarders: {e}")
+    
     async def run(self):
         """Main async run loop"""
         logger.info(f"Starting async PPP bridge on {self.serial_port}")
@@ -2116,7 +2166,18 @@ class AsyncPPPBridge:
             logger.info("Direct connection mode")
         
         logger.info(f"Available services: {list(self.proxy.services.keys())}")
+        logger.info("Service mappings:")
+        for port, (host, target_port) in self.proxy.services.items():
+            logger.info(f"  {port} -> {host}:{target_port}")
         logger.info("PPP negotiation will begin automatically when client connects")
+        logger.info("")
+        logger.info("Usage instructions:")
+        if self.ppp_negotiator.is_server:
+            logger.info("  This is the SERVER (host). It will expose local services to PPP clients.")
+            logger.info(f"  Clients should connect to {self.remote_ip}:<port> to access services")
+        else:
+            logger.info("  This is the CLIENT. It can connect to services on the PPP server.")
+            logger.info(f"  Connect to {self.remote_ip}:<port> to access server services")
         
         # Open serial connection
         reader, writer = await serial_asyncio.open_serial_connection(
