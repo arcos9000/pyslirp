@@ -763,33 +763,40 @@ class TCPStateMachine:
                 # ACK for unsent data
                 return self._create_ack_segment(tcp_stack, segment_info, conn)
         
-        # Process data
+        # Process data using new bidirectional proxy pattern
         response = None
         if data:
             if seq == conn.rcv_nxt:
                 # Data in sequence
-                logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence, forwarding to service")
+                logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence")
                 conn.rcv_nxt += len(data)
                 
-                # Forward data to local socket
-                if conn.local_sock:
-                    try:
-                        conn.local_sock.write(data)
-                        await conn.local_sock.drain()
-                        logger.info(f"TCP: Successfully forwarded {len(data)} bytes to local service in ESTABLISHED state")
-                    except Exception as e:
-                        logger.error(f"TCP: Failed to forward data to local service in ESTABLISHED state: {e}")
-                else:
-                    logger.warning(f"TCP: No local service socket available in ESTABLISHED state to forward {len(data)} bytes")
-                    # Buffer the data for when service becomes available
-                    if not hasattr(conn, 'send_buffer'):
-                        conn.send_buffer = b''
-                    conn.send_buffer += data
+                # Check if this is first data in ESTABLISHED state - establish bidirectional forwarding
+                if not hasattr(conn, 'proxy_task') or conn.proxy_task is None:
+                    logger.info("First data in ESTABLISHED state - establishing bidirectional forwarding")
+                    
+                    # Map destination port to service
+                    service_port = tcp_stack._map_service_port(conn.dst_port)
+                    success = await tcp_stack.proxy.establish_bidirectional_forwarding(
+                        conn, "127.0.0.1", service_port, writer
+                    )
+                    
+                    if not success:
+                        # Forwarding failed, close connection
+                        logger.error("Failed to establish bidirectional forwarding, closing connection")
+                        conn.state = TCPState.CLOSED
+                        return self._create_rst_segment(
+                            tcp_stack, segment_info,
+                            seq=conn.snd_nxt, ack=conn.rcv_nxt, flags=TCPFlags.RST
+                        )
+                
+                # Queue data for bidirectional forwarding instead of forwarding directly
+                await tcp_stack.proxy.handle_ppp_data(conn, data)
                 
                 # Check for out-of-order segments that can now be processed
                 await self._process_out_of_order_queue(conn, writer)
                 
-                # Send ACK
+                # Send ACK (non-blocking)
                 response = self._create_ack_segment(tcp_stack, segment_info, conn)
             else:
                 # Out of sequence data
@@ -801,6 +808,9 @@ class TCPStateMachine:
         # Check FIN
         if flags & TCPFlags.FIN:
             conn.rcv_nxt += 1  # FIN consumes sequence number
+            # Signal bidirectional forwarding to stop
+            if hasattr(conn, '_shutdown_event') and conn._shutdown_event:
+                conn._shutdown_event.set()
             conn.state = TCPState.CLOSE_WAIT
             
             # Send ACK for FIN
@@ -1032,6 +1042,15 @@ class TCPStateMachine:
             conn.state = TCPState.CLOSED
             
         self.timer_manager.add_timer(timer, time_wait_callback)
+    
+    def _map_service_port(self, ppp_port: int) -> int:
+        """Map PPP destination port to actual service port"""
+        port_mapping = {
+            22: 22,    # SSH
+            80: 80,    # HTTP
+            443: 443,  # HTTPS
+        }
+        return port_mapping.get(ppp_port, ppp_port)
 
 class AsyncPPPHandler:
     """Async PPP frame handler"""
@@ -1631,6 +1650,7 @@ class AsyncTCPStack:
         self.remote_ip = socket.inet_aton(remote_ip)
         self.connections: Dict[Tuple[int, int], TCPConnection] = {}
         self.ip_id_counter = 0
+        self.proxy = None  # Will be set by AsyncPPPBridge
         
         # Enhanced TCP components
         self.timer_manager = TCPTimerManager()
@@ -1840,6 +1860,7 @@ class AsyncServiceProxy:
         self.socks_port = socks_port
         self.service_tasks = {}
         self.pending_connections = {}  # Track pending service connections
+        self.active_connections = {}  # Track bidirectional proxy connections
         
         # Service port mapping from config
         self.services = {}
@@ -1999,6 +2020,210 @@ class AsyncServiceProxy:
                 del self.service_tasks[key]
             if key in self.tcp_stack.connections:
                 del self.tcp_stack.connections[key]
+    
+    async def establish_bidirectional_forwarding(self, conn: TCPConnection, 
+                                               host: str, port: int, 
+                                               serial_writer: asyncio.StreamWriter) -> bool:
+        """
+        Establish bidirectional forwarding between PPP and service using production pattern.
+        
+        This is called ONCE when TCP connection reaches ESTABLISHED state.
+        Returns True if forwarding was successfully established.
+        """
+        try:
+            # Establish connection to target service
+            logger.info(f"Establishing bidirectional forwarding to {host}:{port}")
+            conn.local_reader, conn.local_writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port),
+                timeout=10.0
+            )
+            
+            # Initialize shutdown event and data queue
+            conn._shutdown_event = asyncio.Event()
+            conn._ppp_data_queue = asyncio.Queue()
+            
+            # Start bidirectional forwarding using asyncio.gather() pattern
+            key = f"{conn.src_port}->{conn.dst_port}"
+            conn.proxy_task = asyncio.create_task(
+                self._run_bidirectional_forwarding(conn, serial_writer)
+            )
+            self.active_connections[key] = conn
+            
+            logger.info(f"Bidirectional forwarding established for {conn.src_port}->{conn.dst_port}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to establish forwarding to {host}:{port}: {e}")
+            await self._cleanup_connection(conn)
+            return False
+    
+    async def _run_bidirectional_forwarding(self, conn: TCPConnection, 
+                                          serial_writer: asyncio.StreamWriter):
+        """
+        Core bidirectional forwarding logic using asyncio.gather() pattern.
+        
+        This is the proven pattern used in production proxies.
+        Both directions run concurrently and coordinate shutdown.
+        """
+        logger.info(f"Starting bidirectional forwarding: PPP({conn.src_port}) <-> Service({conn.dst_port})")
+        
+        try:
+            # Run both directions concurrently using asyncio.gather()
+            # If either direction fails or completes, both stop
+            await asyncio.gather(
+                self._forward_ppp_to_service(conn),  # PPP -> Service
+                self._forward_service_to_ppp(conn, serial_writer),  # Service -> PPP
+                return_exceptions=False  # Stop both on first exception
+            )
+            
+        except Exception as e:
+            logger.error(f"Bidirectional forwarding error: {e}")
+        finally:
+            logger.info(f"Bidirectional forwarding ended for {conn.src_port}->{conn.dst_port}")
+            await self._cleanup_connection(conn)
+    
+    async def _forward_ppp_to_service(self, conn: TCPConnection):
+        """
+        Forward data from PPP client to local service.
+        
+        This replaces the data handling in _handle_established_state.
+        Data is queued here instead of being processed inline.
+        """
+        logger.debug("Starting PPP -> Service forwarding")
+        
+        try:
+            while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
+                try:
+                    # Wait for data from PPP side (populated by TCP state machine)
+                    data = await asyncio.wait_for(
+                        conn._ppp_data_queue.get(),
+                        timeout=1.0
+                    )
+                    
+                    if not data:  # Shutdown signal
+                        break
+                    
+                    # Forward to service
+                    conn.local_writer.write(data)
+                    await conn.local_writer.drain()
+                    
+                    logger.debug(f"Forwarded {len(data)} bytes PPP -> Service")
+                    
+                except asyncio.TimeoutError:
+                    continue  # Check shutdown condition
+                    
+        except Exception as e:
+            logger.error(f"PPP -> Service forwarding error: {e}")
+            raise
+        finally:
+            logger.debug("PPP -> Service forwarding stopped")
+    
+    async def _forward_service_to_ppp(self, conn: TCPConnection, 
+                                    serial_writer: asyncio.StreamWriter):
+        """
+        Forward data from local service to PPP client.
+        
+        This is event-driven (no timeouts) and coordinates with PPP side.
+        """
+        logger.debug("Starting Service -> PPP forwarding")
+        
+        try:
+            while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
+                # Read data from service (blocks until data available)
+                data = await conn.local_reader.read(4096)
+                
+                if not data:  # Service closed connection
+                    logger.info("Service closed connection, initiating shutdown")
+                    break
+                
+                # Send data through PPP
+                await self._send_data_to_ppp(conn, data, serial_writer)
+                logger.debug(f"Forwarded {len(data)} bytes Service -> PPP")
+                
+        except Exception as e:
+            logger.error(f"Service -> PPP forwarding error: {e}")
+            raise
+        finally:
+            logger.debug("Service -> PPP forwarding stopped")
+            conn._shutdown_event.set()  # Signal other direction to stop
+    
+    async def _send_data_to_ppp(self, conn: TCPConnection, data: bytes, 
+                              serial_writer: asyncio.StreamWriter):
+        """Send data from service back to PPP client"""
+        # Create TCP segment with PSH+ACK flags
+        tcp_segment = self.tcp_stack.create_tcp_segment(
+            conn.dst_ip, conn.src_ip,  # Swap src/dst for response
+            conn.dst_port, conn.src_port,
+            conn.seq_num, conn.ack_num,
+            TCPFlags.PSH | TCPFlags.ACK,
+            data=data
+        )
+        
+        # Create IP packet
+        ip_packet = self.tcp_stack.create_ip_packet(
+            conn.dst_ip, conn.src_ip, tcp_segment
+        )
+        
+        # Frame as PPP and send
+        ppp_frame = struct.pack('!BBH', 0xFF, 0x03, 0x0021) + ip_packet
+        framed = AsyncPPPHandler.frame_data(ppp_frame)
+        
+        serial_writer.write(framed)
+        await serial_writer.drain()
+        
+        # Update sequence number
+        conn.seq_num += len(data)
+    
+    async def handle_ppp_data(self, conn: TCPConnection, data: bytes):
+        """
+        Called by TCP state machine when data arrives from PPP.
+        
+        Instead of forwarding directly, queue it for the forwarding task.
+        This decouples TCP processing from data forwarding.
+        """
+        if (hasattr(conn, '_ppp_data_queue') and hasattr(conn, 'proxy_task') and 
+            conn.proxy_task and not conn.proxy_task.done()):
+            try:
+                await conn._ppp_data_queue.put(data)
+                logger.debug(f"Queued {len(data)} bytes for forwarding")
+            except Exception as e:
+                logger.error(f"Failed to queue PPP data: {e}")
+        else:
+            logger.warning(f"No forwarding task available, dropping {len(data)} bytes")
+    
+    async def _cleanup_connection(self, conn: TCPConnection):
+        """Clean up connection resources with proper coordination"""
+        logger.info(f"Cleaning up bidirectional connection {conn.src_port}->{conn.dst_port}")
+        
+        # Signal shutdown to forwarding tasks
+        if hasattr(conn, '_shutdown_event') and conn._shutdown_event:
+            conn._shutdown_event.set()
+        
+        # Cancel proxy task
+        if hasattr(conn, 'proxy_task') and conn.proxy_task and not conn.proxy_task.done():
+            conn.proxy_task.cancel()
+            try:
+                await conn.proxy_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Close service connection
+        if conn.local_writer:
+            conn.local_writer.close()
+            try:
+                await conn.local_writer.wait_closed()
+            except Exception:
+                pass
+        
+        # Clear references
+        conn.local_reader = None
+        conn.local_writer = None
+        if hasattr(conn, 'proxy_task'):
+            conn.proxy_task = None
+        
+        # Remove from active connections
+        key = f"{conn.src_port}->{conn.dst_port}"
+        self.active_connections.pop(key, None)
 
 class AsyncPPPBridge:
     """Main async PPP to services bridge"""
@@ -2026,6 +2251,7 @@ class AsyncPPPBridge:
         self.ppp_negotiator = AsyncPPPNegotiator(self.local_ip, self.remote_ip, is_server)
         self.tcp_stack = AsyncTCPStack(self.local_ip, self.remote_ip)
         self.proxy = AsyncServiceProxy(self.tcp_stack, socks_host, socks_port, config)
+        self.tcp_stack.proxy = self.proxy  # Set proxy reference for bidirectional forwarding
         self.negotiation_started = False
         self.tcp_forwarder = None  # Will be initialized for client mode
         
