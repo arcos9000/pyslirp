@@ -706,6 +706,7 @@ class TCPStateMachine:
         if flags & TCPFlags.ACK:
             if conn.snd_una <= ack <= conn.snd_nxt:
                 # Acceptable ACK
+                logger.info(f"TCP: Connection {conn.src_port}->{conn.dst_port} transitioning to ESTABLISHED")
                 conn.state = TCPState.ESTABLISHED
                 conn.snd_una = ack
                 
@@ -1893,18 +1894,23 @@ class AsyncServiceProxy:
                                writer: asyncio.StreamWriter) -> bytes:
         """Handle established TCP connection"""
         key = (conn.src_port, conn.dst_port)
+        logger.info(f"ServiceProxy: Handling connection {key[0]}->{key[1]}")
         
         # Create task to forward data from service
         if key not in self.service_tasks:
+            logger.info(f"ServiceProxy: Starting forward task for {key[0]}->{key[1]}")
             task = asyncio.create_task(
                 self.forward_service_data(conn, writer)
             )
             self.service_tasks[key] = task
+        else:
+            logger.debug(f"ServiceProxy: Forward task already exists for {key[0]}->{key[1]}")
         
         # Process any pending data in connection
         if conn.send_buffer:
             data = conn.send_buffer
             conn.send_buffer = b''
+            logger.info(f"ServiceProxy: Sending {len(data)} bytes of buffered data to service")
             
             if conn.local_sock:
                 conn.local_sock.write(data)
@@ -1915,6 +1921,7 @@ class AsyncServiceProxy:
     async def forward_service_data(self, conn: TCPConnection,
                                   serial_writer: asyncio.StreamWriter):
         """Forward data from service to PPP client"""
+        logger.info(f"ServiceProxy: Starting data forwarding for {conn.src_port}->{conn.dst_port}")
         try:
             while conn.state == TCPState.ESTABLISHED:
                 if conn.local_reader:
@@ -1924,6 +1931,7 @@ class AsyncServiceProxy:
                     )
                     
                     if data:
+                        logger.info(f"ServiceProxy: Received {len(data)} bytes from service, forwarding to PPP")
                         # Create TCP packet with data
                         tcp_seg = self.tcp_stack.create_tcp_segment(
                             conn.dst_ip, conn.src_ip,
@@ -2046,22 +2054,24 @@ class AsyncPPPBridge:
             logger.debug("TCP stack generated no response")
         
         # Handle connection establishment for service proxy
-        if response:
-            key = (packet_info['src_port'], packet_info['dst_port'])
-            conn = self.tcp_stack.connections.get(key)
+        key = (packet_info['src_port'], packet_info['dst_port'])
+        conn = self.tcp_stack.connections.get(key)
+        
+        # Check if connection is now established and needs service setup
+        if (conn and conn.state == TCPState.ESTABLISHED and 
+            key in self.proxy.pending_connections):
             
-            if (conn and conn.state == TCPState.ESTABLISHED and 
-                key in self.proxy.pending_connections):
-                
-                # Connection established, set up service forwarding
-                reader, writer_svc = self.proxy.pending_connections.pop(key)
-                conn.local_reader = reader
-                conn.local_sock = writer_svc
-                
-                # Start forwarding task
-                await self.proxy.handle_connection(conn, writer)
-                
-                logger.info(f"Service connection established: {packet_info['src_port']} -> {packet_info['dst_port']}")
+            logger.info(f"Setting up service forwarding: {packet_info['src_port']} -> {packet_info['dst_port']}")
+            
+            # Connection established, set up service forwarding
+            reader, writer_svc = self.proxy.pending_connections.pop(key)
+            conn.local_reader = reader
+            conn.local_sock = writer_svc
+            
+            # Start forwarding task
+            asyncio.create_task(self.proxy.handle_connection(conn, writer))
+            
+            logger.info(f"Service connection established: {packet_info['src_port']} -> {packet_info['dst_port']}")
         
         return response
     
