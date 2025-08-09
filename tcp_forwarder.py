@@ -180,7 +180,7 @@ class TCPPortForwarder:
     
     async def _send_data(self, conn: ForwardedConnection, data: bytes):
         """Send data through PPP connection"""
-        logger.debug(f"Sending {len(data)} bytes through PPP for port {conn.synthetic_port}")
+        logger.debug(f"Sending {len(data)} bytes from local client through PPP for port {conn.synthetic_port}")
         
         # Create TCP data packet
         tcp_segment = self._create_tcp_segment(
@@ -202,6 +202,7 @@ class TCPPortForwarder:
         
         # Update sequence number
         conn.seq_num += len(data)
+        logger.debug(f"Sent {len(data)} bytes, updated seq to {conn.seq_num}")
     
     async def _send_fin(self, conn: ForwardedConnection):
         """Send TCP FIN packet"""
@@ -371,9 +372,14 @@ class TCPPortForwarder:
             # Handle data or control packets
             data = packet_info.get('data', b'')
             if data:
+                logger.debug(f"Forwarding {len(data)} bytes from server to local client on port {dst_port}")
                 # Forward data to local client
-                conn.local_writer.write(data)
-                await conn.local_writer.drain()
+                try:
+                    conn.local_writer.write(data)
+                    await conn.local_writer.drain()
+                    logger.debug(f"Successfully forwarded {len(data)} bytes to local client")
+                except Exception as e:
+                    logger.error(f"Failed to forward data to local client: {e}")
                 
                 # Update ack number
                 conn.ack_num = packet_info.get('seq_num', 0) + len(data)
