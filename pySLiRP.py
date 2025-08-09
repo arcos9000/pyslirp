@@ -768,12 +768,23 @@ class TCPStateMachine:
         if data:
             if seq == conn.rcv_nxt:
                 # Data in sequence
+                logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence, forwarding to service")
                 conn.rcv_nxt += len(data)
                 
                 # Forward data to local socket
                 if conn.local_sock:
-                    conn.local_sock.write(data)
-                    await conn.local_sock.drain()
+                    try:
+                        conn.local_sock.write(data)
+                        await conn.local_sock.drain()
+                        logger.info(f"TCP: Successfully forwarded {len(data)} bytes to local service in ESTABLISHED state")
+                    except Exception as e:
+                        logger.error(f"TCP: Failed to forward data to local service in ESTABLISHED state: {e}")
+                else:
+                    logger.warning(f"TCP: No local service socket available in ESTABLISHED state to forward {len(data)} bytes")
+                    # Buffer the data for when service becomes available
+                    if not hasattr(conn, 'send_buffer'):
+                        conn.send_buffer = b''
+                    conn.send_buffer += data
                 
                 # Check for out-of-order segments that can now be processed
                 await self._process_out_of_order_queue(conn, writer)
@@ -782,6 +793,7 @@ class TCPStateMachine:
                 response = self._create_ack_segment(tcp_stack, segment_info, conn)
             else:
                 # Out of sequence data
+                logger.debug(f"TCP: Out of sequence data - expected seq {conn.rcv_nxt}, got {seq}, queueing")
                 self._queue_out_of_order_segment(conn, seq, data)
                 # Send duplicate ACK
                 response = self._create_ack_segment(tcp_stack, segment_info, conn)
@@ -940,8 +952,23 @@ class TCPStateMachine:
         """Process data in segment"""
         data = segment_info['data']
         if data:
+            logger.info(f"TCP: Received {len(data)} bytes of data from PPP client, forwarding to service")
             conn.rcv_nxt += len(data)
-            # Forward to local socket would happen in higher level
+            
+            # Forward data to local service
+            if conn.local_sock:
+                try:
+                    conn.local_sock.write(data)
+                    await conn.local_sock.drain()
+                    logger.info(f"TCP: Successfully forwarded {len(data)} bytes to local service")
+                except Exception as e:
+                    logger.error(f"TCP: Failed to forward data to local service: {e}")
+            else:
+                logger.warning(f"TCP: No local service socket available to forward {len(data)} bytes")
+                # Buffer the data for when service becomes available
+                if not hasattr(conn, 'send_buffer'):
+                    conn.send_buffer = b''
+                conn.send_buffer += data
             
         return self._create_ack_segment(tcp_stack, segment_info, conn)
     
