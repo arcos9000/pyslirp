@@ -773,7 +773,8 @@ class TCPStateMachine:
                 
                 # Check if this is first data in ESTABLISHED state - establish bidirectional forwarding
                 if not hasattr(conn, 'proxy_task') or conn.proxy_task is None:
-                    logger.info("First data in ESTABLISHED state - establishing bidirectional forwarding")
+                    logger.info(f"[SETUP] First data in ESTABLISHED state for {conn.src_port}->{conn.dst_port} - establishing bidirectional forwarding")
+                    logger.info(f"[SETUP] Data content: {data[:50]} (showing first 50 bytes)")
                     
                     # Map destination port to service
                     service_port = tcp_stack._map_service_port(conn.dst_port)
@@ -1046,9 +1047,10 @@ class TCPStateMachine:
     def _map_service_port(self, ppp_port: int) -> int:
         """Map PPP destination port to actual service port"""
         port_mapping = {
-            22: 22,    # SSH
-            80: 80,    # HTTP
-            443: 443,  # HTTPS
+            22: 22,      # SSH
+            80: 80,      # HTTP
+            443: 443,    # HTTPS
+            8888: 8888,  # Echo server for testing
         }
         return port_mapping.get(ppp_port, ppp_port)
 
@@ -2032,11 +2034,13 @@ class AsyncServiceProxy:
         """
         try:
             # Establish connection to target service
-            logger.info(f"Establishing bidirectional forwarding to {host}:{port}")
+            logger.info(f"[CONNECT] Establishing bidirectional forwarding to {host}:{port}")
+            logger.info(f"[CONNECT] Connection: {conn.src_port}->{conn.dst_port}")
             conn.local_reader, conn.local_writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port),
                 timeout=10.0
             )
+            logger.info(f"[SUCCESS] Connected to target service {host}:{port}")
             
             # Initialize shutdown event and data queue
             conn._shutdown_event = asyncio.Event()
@@ -2049,7 +2053,7 @@ class AsyncServiceProxy:
             )
             self.active_connections[key] = conn
             
-            logger.info(f"Bidirectional forwarding established for {conn.src_port}->{conn.dst_port}")
+            logger.info(f"[READY] Bidirectional forwarding established for {conn.src_port}->{conn.dst_port}")
             return True
             
         except Exception as e:
@@ -2185,11 +2189,11 @@ class AsyncServiceProxy:
             conn.proxy_task and not conn.proxy_task.done()):
             try:
                 await conn._ppp_data_queue.put(data)
-                logger.debug(f"Queued {len(data)} bytes for forwarding")
+                logger.info(f"[QUEUE] Queued {len(data)} bytes for PPP->Service forwarding: {data[:20]}")
             except Exception as e:
-                logger.error(f"Failed to queue PPP data: {e}")
+                logger.error(f"[ERROR] Failed to queue PPP data: {e}")
         else:
-            logger.warning(f"No forwarding task available, dropping {len(data)} bytes")
+            logger.warning(f"[WARN] No forwarding task available, dropping {len(data)} bytes")
     
     async def _cleanup_connection(self, conn: TCPConnection):
         """Clean up connection resources with proper coordination"""

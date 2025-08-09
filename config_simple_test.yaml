@@ -1,0 +1,32 @@
+# Simple test configuration for PyLiRP
+# Tests basic TCP flow with echo server on port 8888
+
+serial:
+  port: /dev/ttyUSB0
+  baudrate: 115200
+
+network:
+  local_ip: 10.0.0.1   # Server IP
+  remote_ip: 10.0.0.2  # Client IP
+
+# Services configuration - map PPP port to local service
+services:
+  8888:
+    host: 127.0.0.1
+    port: 8888
+    name: "Echo Server"
+    enabled: true
+    max_connections: 10
+
+security:
+  allowed_ports: [8888]
+  rate_limiting:
+    enabled: false  # Disable for testing
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  
+# Enable debug logging
+logging:
+  level: DEBUG
