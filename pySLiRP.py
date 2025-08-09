@@ -2205,7 +2205,7 @@ class AsyncPPPBridge:
         logger.info("")
         logger.info("Usage instructions:")
         if self.ppp_negotiator.is_server:
-            logger.info("  This is the SERVER (host). It will expose local services to PPP clients.")
+            logger.info("  This is the SERVER (host). It provides local services to PPP clients.")
             logger.info(f"  Clients should connect to {self.remote_ip}:<port> to access services")
         else:
             logger.info("  This is the CLIENT. It can connect to services on the PPP server.")
