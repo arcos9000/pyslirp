@@ -1,24 +1,96 @@
-2025-08-10 06:39:05,326 - tcp_forwarder - INFO - New connection on 127.0.0.1:8888 from ('127.0.0.1', 35144)
-2025-08-10 06:39:05,327 - tcp_forwarder - INFO - Sending SYN: 30000 -> 10.0.0.1:8888 (seq=2096048024)
-2025-08-10 06:39:05,328 - tcp_forwarder - DEBUG - Sending 46 bytes through serial: 10.0.0.2->10.0.0.1
-2025-08-10 06:39:05,329 - tcp_forwarder - INFO - SYN sent, connection 30000 now in SYN_SENT state
-2025-08-10 06:39:05,345 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=SYN/ACK (0x12), seq=1683537457, ack=2096048025, data_len=0
-2025-08-10 06:39:05,346 - tcp_forwarder - INFO - Received SYN|ACK for port 30000 - connection established!
-2025-08-10 06:39:05,348 - tcp_forwarder - DEBUG - Sending 46 bytes through serial: 10.0.0.2->10.0.0.1
-2025-08-10 06:39:05,358 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=ACK (0x10), seq=1683537458, ack=2096048025, data_len=0
-2025-08-10 06:39:05,431 - tcp_forwarder - INFO - Connection established for port 30000
-2025-08-10 06:39:08,621 - tcp_forwarder - DEBUG - Sending 6 bytes from local client through PPP for port 30000
-2025-08-10 06:39:08,622 - tcp_forwarder - DEBUG - Data packet: seq=2096048024, ack=1683537458, data='b'echo\r\n''
-2025-08-10 06:39:08,623 - tcp_forwarder - DEBUG - Sending 52 bytes through serial: 10.0.0.2->10.0.0.1
-2025-08-10 06:39:08,624 - tcp_forwarder - DEBUG - Sent 6 bytes, updated seq to 2096048030
-2025-08-10 06:39:08,644 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=ACK (0x10), seq=1683537458, ack=2096048031, data_len=0
-2025-08-10 06:39:08,645 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=PSH/ACK (0x18), seq=1683537457, ack=0, data_len=12
-2025-08-10 06:39:08,646 - tcp_forwarder - DEBUG - Forwarding 12 bytes from server to local client on port 30000
-2025-08-10 06:39:08,647 - tcp_forwarder - DEBUG - Successfully forwarded 12 bytes to local client
-2025-08-10 06:39:08,648 - tcp_forwarder - DEBUG - Sending 46 bytes through serial: 10.0.0.2->10.0.0.1
-2025-08-10 06:39:08,657 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=ACK (0x10), seq=1683537458, ack=2096048031, data_len=0
-2025-08-10 06:39:10,776 - tcp_forwarder - DEBUG - Sending 7 bytes from local client through PPP for port 30000
-2025-08-10 06:39:10,777 - tcp_forwarder - DEBUG - Data packet: seq=2096048030, ack=1683537469, data='b'bongo\r\n''
-2025-08-10 06:39:10,778 - tcp_forwarder - DEBUG - Sending 53 bytes through serial: 10.0.0.2->10.0.0.1
-2025-08-10 06:39:10,779 - tcp_forwarder - DEBUG - Sent 7 bytes, updated seq to 2096048037
-2025-08-10 06:39:10,793 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=RST (0x04), seq=1683537469, ack=0, data_len=0
+INFO:cli_utils:Running in virtual environment: /opt/pyslirp/.venv
+INFO:cli_utils:Python executable: /opt/pyslirp/.venv/bin/python
+INFO:app:Starting PyLiRP application...
+INFO:app:Loading configuration in client mode...
+INFO:config_manager:Using client mode configuration
+INFO:config_manager:Configuration loaded from /home/claude/pyslirp/config_unified.yaml
+2025-08-10 09:31:04,800 - app - INFO - Initializing security manager...
+2025-08-10 09:31:04,800 - security - ERROR - Failed to setup security audit logging: [Errno 13] Permission denied: '/var/log/pyslirp_security.log'
+2025-08-10 09:31:04,801 - security - INFO - Added service rule for port 22: max_conn=50
+2025-08-10 09:31:04,801 - security - INFO - Added service rule for port 80: max_conn=50
+2025-08-10 09:31:04,801 - security - INFO - Added service rule for port 443: max_conn=50
+2025-08-10 09:31:04,802 - security - INFO - Security manager initialized
+2025-08-10 09:31:04,802 - app - INFO - Initializing monitoring...
+2025-08-10 09:31:04,802 - monitoring - INFO - Starting monitoring system
+2025-08-10 09:31:05,404 - monitoring - INFO - Metrics server started on port 9090
+2025-08-10 09:31:05,405 - monitoring - INFO - Monitoring system started
+2025-08-10 09:31:05,405 - app - INFO - Initializing connection pool...
+2025-08-10 09:31:05,405 - app - INFO - Initializing error recovery...
+2025-08-10 09:31:05,406 - error_recovery - INFO - Error recovery manager initialized
+2025-08-10 09:31:05,406 - error_recovery - INFO - Error recovery monitoring started
+2025-08-10 09:31:05,406 - app - INFO - Initializing PPP bridge...
+2025-08-10 09:31:05,407 - pySLiRP - INFO - PPP Negotiator initialized [Client] - Local: 10.0.0.2, Remote: 10.0.0.1
+2025-08-10 09:31:05,407 - pySLiRP - INFO - Magic Number: 0x67B5E302
+2025-08-10 09:31:05,407 - app - INFO - Components integrated with PPP bridge
+2025-08-10 09:31:05,408 - app - INFO - All components initialized successfully
+2025-08-10 09:31:05,408 - app - INFO - Starting PPP bridge...
+2025-08-10 09:31:05,409 - pySLiRP - INFO - Starting async PPP bridge on /dev/ttyGS0
+2025-08-10 09:31:05,409 - pySLiRP - INFO - Running as: CLIENT
+2025-08-10 09:31:05,409 - pySLiRP - INFO - Local IP: 10.0.0.2, Remote IP: 10.0.0.1
+2025-08-10 09:31:05,410 - pySLiRP - INFO - Magic Number: 0x67B5E302
+2025-08-10 09:31:05,410 - pySLiRP - INFO - MRU: 1500 bytes
+2025-08-10 09:31:05,410 - pySLiRP - INFO - Direct connection mode
+2025-08-10 09:31:05,410 - pySLiRP - INFO - Available services: []
+2025-08-10 09:31:05,411 - pySLiRP - INFO - Service mappings:
+2025-08-10 09:31:05,411 - pySLiRP - INFO - PPP negotiation will begin automatically when client connects
+2025-08-10 09:31:05,411 - pySLiRP - INFO - 
+2025-08-10 09:31:05,411 - pySLiRP - INFO - Usage instructions:
+2025-08-10 09:31:05,412 - pySLiRP - INFO -   This is the CLIENT. It can connect to services on the PPP server.
+2025-08-10 09:31:05,412 - pySLiRP - INFO -   Connect to 10.0.0.1:<port> to access server services
+2025-08-10 09:31:05,413 - pySLiRP - INFO - Starting PPP negotiation as CLIENT - sending initial LCP Configure-Request
+2025-08-10 09:31:05,413 - pySLiRP - DEBUG - Sending LCP Configure-Request (ID: 1)
+2025-08-10 09:31:05,414 - pySLiRP - INFO - [CLIENT] Detected client mode - starting forwarder task
+2025-08-10 09:31:05,415 - pySLiRP - INFO - [CLIENT] Waiting for PPP negotiation to complete...
+2025-08-10 09:31:05,419 - pySLiRP - DEBUG - Peer magic number: 0x7ED6B3CA
+2025-08-10 09:31:05,420 - pySLiRP - DEBUG - Peer MRU: 1500
+2025-08-10 09:31:05,420 - pySLiRP - INFO - LCP negotiation completed - Link established
+2025-08-10 09:31:05,420 - pySLiRP - DEBUG - LCP Configure-Ack received (ID: 1)
+2025-08-10 09:31:05,421 - pySLiRP - DEBUG - LCP opened - starting IPCP negotiation
+2025-08-10 09:31:05,421 - pySLiRP - DEBUG - Sending IPCP Configure-Request (ID: 1) - IP: 10.0.0.2
+2025-08-10 09:31:05,435 - pySLiRP - DEBUG - Peer IP address accepted: 10.0.0.1
+2025-08-10 09:31:05,435 - pySLiRP - INFO - IPCP negotiation completed - IP layer ready
+2025-08-10 09:31:05,436 - pySLiRP - DEBUG - IPCP Configure-Ack received (ID: 1)
+2025-08-10 09:31:05,717 - pySLiRP - DEBUG - Sending LCP Echo-Reply (ID: 2)
+2025-08-10 09:31:06,416 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 2)
+2025-08-10 09:31:06,417 - pySLiRP - INFO - [CLIENT] PPP ready - starting client TCP forwarders
+2025-08-10 09:31:06,471 - pySLiRP - INFO - [CLIENT] Creating TCPPortForwarder instance
+2025-08-10 09:31:06,472 - pySLiRP - INFO - [CLIENT] Config available: True
+2025-08-10 09:31:06,472 - pySLiRP - INFO - [CLIENT] Port forwards configured: {2222: 22, 8888: 8888, 8080: 80}
+2025-08-10 09:31:06,473 - tcp_forwarder - INFO - [FORWARDER] Starting port forwarders...
+2025-08-10 09:31:06,473 - tcp_forwarder - INFO - [FORWARDER] Using config port_forwards: {2222: 22, 8888: 8888, 8080: 80}
+2025-08-10 09:31:06,474 - tcp_forwarder - INFO - [FORWARDER] Creating 3 port forward listeners...
+2025-08-10 09:31:06,474 - tcp_forwarder - INFO - [FORWARDER] Creating listener on localhost:2222 -> 10.0.0.1:22
+2025-08-10 09:31:06,476 - tcp_forwarder - INFO - TCP forwarder listening on ('127.0.0.1', 2222) -> 10.0.0.1:22
+2025-08-10 09:31:06,477 - tcp_forwarder - INFO - [SUCCESS] Port forward active: localhost:2222 -> 10.0.0.1:22
+2025-08-10 09:31:06,478 - tcp_forwarder - INFO - [FORWARDER] Creating listener on localhost:8888 -> 10.0.0.1:8888
+2025-08-10 09:31:06,479 - tcp_forwarder - INFO - TCP forwarder listening on ('127.0.0.1', 8888) -> 10.0.0.1:8888
+2025-08-10 09:31:06,480 - tcp_forwarder - INFO - [SUCCESS] Port forward active: localhost:8888 -> 10.0.0.1:8888
+2025-08-10 09:31:06,480 - tcp_forwarder - INFO - [FORWARDER] Creating listener on localhost:8080 -> 10.0.0.1:80
+2025-08-10 09:31:06,481 - tcp_forwarder - INFO - TCP forwarder listening on ('127.0.0.1', 8080) -> 10.0.0.1:80
+2025-08-10 09:31:06,482 - tcp_forwarder - INFO - [SUCCESS] Port forward active: localhost:8080 -> 10.0.0.1:80
+2025-08-10 09:31:06,483 - tcp_forwarder - INFO - [FORWARDER] Port forwarder setup complete!
+2025-08-10 09:31:06,483 - pySLiRP - INFO - 
+2025-08-10 09:31:06,483 - pySLiRP - INFO - Client port forwards active:
+2025-08-10 09:31:06,484 - pySLiRP - INFO -   SSH:   ssh localhost -p 2222
+2025-08-10 09:31:06,484 - pySLiRP - INFO -   HTTP:  http://localhost:8080
+2025-08-10 09:31:06,484 - pySLiRP - INFO -   HTTPS: https://localhost:8443
+2025-08-10 09:31:06,489 - pySLiRP - DEBUG - LCP Echo-Reply received (ID: 2)
+2025-08-10 09:31:35,891 - pySLiRP - DEBUG - Sending LCP Echo-Reply (ID: 3)
+2025-08-10 09:31:36,453 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 3)
+2025-08-10 09:31:36,458 - pySLiRP - DEBUG - LCP Echo-Reply received (ID: 3)
+2025-08-10 09:32:06,488 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 4)
+2025-08-10 09:32:36,524 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 5)
+2025-08-10 09:33:06,563 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 6)
+2025-08-10 09:33:36,598 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 7)
+2025-08-10 09:33:41,946 - app - INFO - Received signal 2, initiating shutdown...
+2025-08-10 09:33:41,968 - app - INFO - Shutdown signal received
+2025-08-10 09:33:41,971 - app - INFO - PyLiRP application stopped
+2025-08-10 09:33:41,972 - app - INFO - Shutting down PyLiRP application...
+2025-08-10 09:33:41,973 - error_recovery - INFO - Error recovery monitoring stopped
+2025-08-10 09:33:41,974 - connection_pool - INFO - Shutting down connection pool
+2025-08-10 09:33:41,975 - connection_pool - INFO - Connection pool shutdown complete
+2025-08-10 09:33:41,975 - monitoring - INFO - Stopping monitoring system
+2025-08-10 09:33:41,977 - monitoring - INFO - Metrics server stopped
+2025-08-10 09:33:41,978 - monitoring - INFO - Monitoring system stopped
+2025-08-10 09:33:41,978 - security - INFO - Shutting down security manager
+2025-08-10 09:33:41,979 - app - INFO - PyLiRP application shutdown complete
