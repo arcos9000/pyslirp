@@ -694,7 +694,10 @@ class TCPStateMachine:
         ack = segment_info['ack']
         
         # Check sequence number
-        if not self._is_sequence_acceptable(conn, seq, len(segment_info['data'])):
+        is_seq_acceptable = self._is_sequence_acceptable(conn, seq, len(segment_info['data']))
+        logger.debug(f"TCP: Sequence check - seq={seq}, rcv_nxt={conn.rcv_nxt}, acceptable={is_seq_acceptable}")
+        if not is_seq_acceptable:
+            logger.debug(f"TCP: Rejecting packet due to unacceptable sequence number")
             if not (flags & TCPFlags.RST):
                 return self._create_ack_segment(tcp_stack, segment_info, conn)
             return None

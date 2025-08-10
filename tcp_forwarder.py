@@ -344,8 +344,8 @@ class TCPPortForwarder:
         dst_port = packet_info.get('dst_port')
         src_port = packet_info.get('src_port')
         flags = packet_info.get('flags', 0)
-        seq_num = packet_info.get('seq_num', 0)
-        ack_num = packet_info.get('ack_num', 0)
+        seq_num = packet_info.get('seq', 0)
+        ack_num = packet_info.get('ack', 0)
         data = packet_info.get('data', b'')
         
         # Decode flags for debugging
@@ -367,10 +367,8 @@ class TCPPortForwarder:
         # Handle based on current state
         if conn.state == "SYN_SENT" and (flags & 0x12) == 0x12:  # SYN|ACK
             # Connection accepted
-            server_seq = packet_info.get('seq_num', 0)
             logger.info(f"Received SYN|ACK for port {dst_port} - connection established!")
-            logger.debug(f"SYN+ACK: server_seq={server_seq}, setting ack_num={server_seq + 1}")
-            conn.ack_num = server_seq + 1
+            conn.ack_num = packet_info.get('seq', 0) + 1
             conn.state = "ESTABLISHED"
             
             # Send ACK
@@ -395,7 +393,7 @@ class TCPPortForwarder:
                     logger.error(f"Failed to forward data to local client: {e}")
                 
                 # Update ack number
-                conn.ack_num = packet_info.get('seq_num', 0) + len(data)
+                conn.ack_num = packet_info.get('seq', 0) + len(data)
                 
                 # Send ACK
                 await self._send_ack(conn)
@@ -404,14 +402,13 @@ class TCPPortForwarder:
                 logger.debug(f"Received FIN for port {dst_port}")
                 conn.state = "CLOSE_WAIT"
                 # Send ACK for FIN
-                conn.ack_num = packet_info.get('seq_num', 0) + 1
+                conn.ack_num = packet_info.get('seq', 0) + 1
                 await self._send_ack(conn)
                 # Close local connection
                 conn.local_writer.close()
     
     async def _send_ack(self, conn: ForwardedConnection):
         """Send TCP ACK packet"""
-        logger.debug(f"Sending ACK: seq={conn.seq_num}, ack={conn.ack_num}")
         tcp_segment = self._create_tcp_segment(
             conn.synthetic_port,
             conn.remote_port,
