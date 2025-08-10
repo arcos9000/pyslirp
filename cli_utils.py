@@ -45,6 +45,13 @@ Examples:
     )
     
     parser.add_argument(
+        '-m', '--mode',
+        choices=['host', 'client'],
+        default='host',
+        help='Operation mode: host (server with services) or client (initiates connections)'
+    )
+    
+    parser.add_argument(
         '-b', '--baudrate',
         type=int,
         default=115200,

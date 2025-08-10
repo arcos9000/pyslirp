@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 class PyLiRPApplication:
     """Main application class integrating all components"""
     
-    def __init__(self, config_file: str = None, environment: str = None):
+    def __init__(self, config_file: str = None, environment: str = None, mode: str = 'host'):
         self.config_manager = ConfigManager()
         self.config = None
         self.config_file = config_file
         self.environment = environment
+        self.mode = mode
         
         # Core components
         self.ppp_bridge = None
@@ -46,7 +47,7 @@ class PyLiRPApplication:
                 await self._init_windows_support()
             
             # Load configuration
-            logger.info("Loading configuration...")
+            logger.info(f"Loading configuration in {self.mode} mode...")
             self.config = self._load_configuration()
             
             # Setup logging based on configuration
@@ -90,7 +91,9 @@ class PyLiRPApplication:
     
     def _load_configuration(self):
         """Load configuration from file"""
-        return self.config_manager.load_config(self.config_file, self.environment)
+        config = self.config_manager.load_config(self.config_file, self.environment, self.mode)
+        config.mode = self.mode  # Store mode in config
+        return config
     
     async def _init_security(self):
         """Initialize security manager"""

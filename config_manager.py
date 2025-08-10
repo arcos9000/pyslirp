@@ -225,6 +225,8 @@ class Config:
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
     error_recovery: ErrorRecoveryConfig = field(default_factory=ErrorRecoveryConfig)
     development: DevelopmentConfig = field(default_factory=DevelopmentConfig)
+    port_forwards: Dict[int, int] = field(default_factory=dict)  # For client mode: local->remote
+    mode: str = "host"  # Operation mode: 'host' or 'client'
 
 class ConfigurationError(Exception):
     """Configuration-related error"""
@@ -238,13 +240,15 @@ class ConfigManager:
         self._config_file: Optional[str] = None
         
     def load_config(self, config_file: Optional[str] = None, 
-                   environment: Optional[str] = None) -> Config:
+                   environment: Optional[str] = None,
+                   mode: Optional[str] = None) -> Config:
         """
         Load configuration from file with environment-specific overrides
         
         Args:
             config_file: Path to main config file (default: config.yaml)
             environment: Environment name for overrides (dev/prod/test)
+            mode: Operation mode ('host' or 'client')
             
         Returns:
             Loaded and validated configuration
@@ -257,6 +261,17 @@ class ConfigManager:
         
         # Load main configuration
         main_config = self._load_yaml_file(config_file)
+        
+        # Handle mode selection (host/client)
+        if mode and mode in main_config:
+            logger.info(f"Using {mode} mode configuration")
+            mode_config = main_config[mode]
+            # Also include common settings if present
+            if 'common' in main_config:
+                mode_config = self._merge_configs(main_config['common'], mode_config)
+            main_config = mode_config
+        elif mode:
+            logger.warning(f"Mode '{mode}' not found in config, using full config")
         
         # Load environment-specific overrides
         if environment:

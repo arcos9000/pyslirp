@@ -65,7 +65,7 @@ async def main():
     
     try:
         # Create and run application
-        app = PyLiRPApplication(args.config, args.environment)
+        app = PyLiRPApplication(args.config, args.environment, args.mode)
         
         # Override config with command line arguments if provided
         if args.serial_port and not args.config:

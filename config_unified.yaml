@@ -1,0 +1,73 @@
+# Unified PyLiRP Configuration
+# Use --mode client or --mode host to select configuration
+
+# Host configuration (server side - typically the device with services)
+host:
+  serial:
+    port: /dev/ttyUSB0  # Or COM port on Windows
+    baudrate: 115200
+  
+  network:
+    local_ip: 10.0.0.1   # Host is .1
+    remote_ip: 10.0.0.2  # Client is .2
+  
+  # Services available on host for client to access
+  services:
+    22:
+      host: 127.0.0.1
+      port: 22
+      name: "SSH"
+      enabled: true
+    
+    8888:
+      host: 127.0.0.1
+      port: 8888
+      name: "Echo Server"
+      enabled: true
+    
+    80:
+      host: 127.0.0.1
+      port: 80
+      name: "HTTP"
+      enabled: false
+  
+  security:
+    allowed_ports: [22, 8888, 80, 443]
+    rate_limiting:
+      enabled: false  # Disable for testing
+
+# Client configuration (initiates connections through PPP)
+client:
+  serial:
+    port: /dev/ttyUSB0  # Or COM port on Windows
+    baudrate: 115200
+  
+  network:
+    local_ip: 10.0.0.2   # Client is .2
+    remote_ip: 10.0.0.1  # Host is .1
+  
+  # Port forwarding - creates local listeners that forward through PPP
+  # Local port -> Remote port on host
+  port_forwards:
+    2222: 22      # localhost:2222 -> PPP -> host:22 (SSH)
+    8888: 8888    # localhost:8888 -> PPP -> host:8888 (Echo)
+    8080: 80      # localhost:8080 -> PPP -> host:80 (HTTP)
+  
+  # Optional SOCKS proxy for client
+  socks:
+    enabled: false
+    port: 1080
+
+# Common settings (used by both modes)
+common:
+  monitoring:
+    enable_metrics: true
+    metrics_port: 9090
+    
+  logging:
+    level: DEBUG
+    
+  ppp:
+    mru: 1500
+    magic_number: true
+    echo_interval: 30  # LCP echo interval in seconds

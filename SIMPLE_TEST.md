@@ -14,9 +14,16 @@ This will:
 - Test direct connection to verify server works
 - Keep server running for PPP tests
 
-### 2. Start PyLiRP with Test Config  
+### 2. Start PyLiRP on BOTH Machines
+
+**On Host (Server with services):**
 ```bash
-python3 main.py --config config_simple_test.yaml
+python3 main.py --config config_unified.yaml --mode host
+```
+
+**On Client (Initiates connections):**
+```bash
+python3 main.py --config config_unified.yaml --mode client
 ```
 
 This uses configuration that:
@@ -37,12 +44,20 @@ telnet 127.0.0.1 8888
 Type messages - you should see "ECHO: <your_message>" responses.
 
 ### Step 2: Test Through PPP
-With PPP client connected to `10.0.0.2`, connect to echo server:
+Since 10.0.0.x IPs only exist within PPP and are NOT exposed to the OS, the client creates local listeners:
 
 ```bash
-# On PPP client:
-telnet 10.0.0.1 8888
+# On PPP client machine (after client mode starts):
+telnet localhost 8888
+
+# Or for SSH:
+ssh localhost -p 2222
 ```
+
+The client TCP forwarder will:
+1. Accept connection on localhost:8888
+2. Create TCP connection through PPP to host's 10.0.0.1:8888  
+3. Forward data bidirectionally
 
 ### Expected Behavior
 

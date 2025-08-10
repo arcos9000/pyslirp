@@ -425,8 +425,10 @@ class TCPPortForwarder:
         }
         
         # Use config mappings if available
-        if config and hasattr(config, 'client_forwards'):
-            mappings = config.client_forwards
+        if config and hasattr(config, 'port_forwards'):
+            mappings = config.port_forwards
+        elif config and hasattr(config, 'client_forwards'):
+            mappings = config.client_forwards  # Legacy support
         else:
             mappings = default_mappings
         
