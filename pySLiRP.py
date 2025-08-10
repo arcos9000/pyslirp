@@ -2350,7 +2350,10 @@ class AsyncPPPBridge:
             
             # Wait for PPP to be ready before starting client forwarders
             if not self.ppp_negotiator.is_server:
+                logger.info("[CLIENT] Detected client mode - starting forwarder task")
                 asyncio.create_task(self._start_client_forwarders())
+            else:
+                logger.info("[HOST] Detected host mode - no client forwarders needed")
             
             while True:
                 data = await reader.read(1024)
@@ -2427,19 +2430,29 @@ class AsyncPPPBridge:
     
     async def _start_client_forwarders(self):
         """Start TCP forwarders for client mode"""
+        logger.info("[CLIENT] Waiting for PPP negotiation to complete...")
+        
         # Wait for PPP negotiation to complete
+        wait_count = 0
         while not self.ppp_negotiator.is_ready_for_ip():
+            wait_count += 1
+            if wait_count % 5 == 0:
+                logger.info(f"[CLIENT] Still waiting for PPP... (LCP: {self.ppp_negotiator.lcp_state}, IPCP: {self.ppp_negotiator.ipcp_state})")
             await asyncio.sleep(1)
         
-        logger.info("PPP ready - starting client TCP forwarders")
+        logger.info("[CLIENT] PPP ready - starting client TCP forwarders")
         
         try:
             from tcp_forwarder import TCPPortForwarder
+            logger.info("[CLIENT] Creating TCPPortForwarder instance")
             self.tcp_forwarder = TCPPortForwarder(self)
             
             # Get config or use defaults
-            config = getattr(self, 'config', None)
-            await self.tcp_forwarder.start_forwarders(config)
+            logger.info(f"[CLIENT] Config available: {self.config is not None}")
+            if self.config and hasattr(self.config, 'port_forwards'):
+                logger.info(f"[CLIENT] Port forwards configured: {self.config.port_forwards}")
+            
+            await self.tcp_forwarder.start_forwarders(self.config)
             
             logger.info("")
             logger.info("Client port forwards active:")

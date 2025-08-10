@@ -415,6 +415,7 @@ class TCPPortForwarder:
     
     async def start_forwarders(self, config: Any):
         """Start port forwarders based on configuration"""
+        logger.info("[FORWARDER] Starting port forwarders...")
         self.running = True
         
         # Default port mappings for client
@@ -422,22 +423,31 @@ class TCPPortForwarder:
             2222: 22,   # SSH
             8080: 80,   # HTTP
             8443: 443,  # HTTPS
+            8888: 8888, # Echo server for testing
         }
         
         # Use config mappings if available
         if config and hasattr(config, 'port_forwards'):
+            logger.info(f"[FORWARDER] Using config port_forwards: {config.port_forwards}")
             mappings = config.port_forwards
         elif config and hasattr(config, 'client_forwards'):
+            logger.info(f"[FORWARDER] Using legacy client_forwards: {config.client_forwards}")
             mappings = config.client_forwards  # Legacy support
         else:
+            logger.info(f"[FORWARDER] Using default mappings: {default_mappings}")
             mappings = default_mappings
+        
+        logger.info(f"[FORWARDER] Creating {len(mappings)} port forward listeners...")
         
         for local_port, remote_port in mappings.items():
             try:
+                logger.info(f"[FORWARDER] Creating listener on localhost:{local_port} -> {self.ppp_bridge.remote_ip}:{remote_port}")
                 await self.create_listener(local_port, remote_port)
-                logger.info(f"Port forward active: localhost:{local_port} -> {self.ppp_bridge.remote_ip}:{remote_port}")
+                logger.info(f"[SUCCESS] Port forward active: localhost:{local_port} -> {self.ppp_bridge.remote_ip}:{remote_port}")
             except Exception as e:
-                logger.error(f"Failed to create listener on port {local_port}: {e}")
+                logger.error(f"[ERROR] Failed to create listener on port {local_port}: {e}")
+        
+        logger.info(f"[FORWARDER] Port forwarder setup complete!")
     
     async def stop(self):
         """Stop all port forwarders"""
