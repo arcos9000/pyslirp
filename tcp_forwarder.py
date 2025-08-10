@@ -367,8 +367,10 @@ class TCPPortForwarder:
         # Handle based on current state
         if conn.state == "SYN_SENT" and (flags & 0x12) == 0x12:  # SYN|ACK
             # Connection accepted
+            server_seq = packet_info.get('seq_num', 0)
             logger.info(f"Received SYN|ACK for port {dst_port} - connection established!")
-            conn.ack_num = packet_info.get('seq_num', 0) + 1
+            logger.debug(f"SYN+ACK: server_seq={server_seq}, setting ack_num={server_seq + 1}")
+            conn.ack_num = server_seq + 1
             conn.state = "ESTABLISHED"
             
             # Send ACK
@@ -409,6 +411,7 @@ class TCPPortForwarder:
     
     async def _send_ack(self, conn: ForwardedConnection):
         """Send TCP ACK packet"""
+        logger.debug(f"Sending ACK: seq={conn.seq_num}, ack={conn.ack_num}")
         tcp_segment = self._create_tcp_segment(
             conn.synthetic_port,
             conn.remote_port,
