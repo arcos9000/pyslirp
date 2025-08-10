@@ -181,6 +181,7 @@ class TCPPortForwarder:
     async def _send_data(self, conn: ForwardedConnection, data: bytes):
         """Send data through PPP connection"""
         logger.debug(f"Sending {len(data)} bytes from local client through PPP for port {conn.synthetic_port}")
+        logger.debug(f"Data packet: seq={conn.seq_num}, ack={conn.ack_num}, data='{data[:20]}'")
         
         # Create TCP data packet
         tcp_segment = self._create_tcp_segment(
