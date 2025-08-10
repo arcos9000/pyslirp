@@ -527,6 +527,7 @@ class TCPStateMachine:
             return await self._handle_syn_rcvd_state(conn, segment_info, tcp_stack)
             
         elif conn.state == TCPState.ESTABLISHED:
+            logger.debug(f"TCP: Routing to ESTABLISHED state handler for {conn.src_port}->{conn.dst_port}")
             return await self._handle_established_state(conn, segment_info, tcp_stack, writer)
             
         elif conn.state == TCPState.FIN_WAIT_1:
@@ -1824,6 +1825,22 @@ class AsyncTCPStack:
         """Process TCP segment using the state machine"""
         key = (segment_info['src_port'], segment_info['dst_port'])
         conn = self.connections.get(key)
+        
+        # Debug connection state and packet info
+        flags = segment_info.get('flags', 0)
+        seq = segment_info.get('seq', 0)
+        data = segment_info.get('data', b'')
+        flag_names = []
+        if flags & 0x01: flag_names.append("FIN")
+        if flags & 0x02: flag_names.append("SYN") 
+        if flags & 0x04: flag_names.append("RST")
+        if flags & 0x08: flag_names.append("PSH")
+        if flags & 0x10: flag_names.append("ACK")
+        
+        if conn:
+            logger.debug(f"TCP: Processing {'/'.join(flag_names) if flag_names else 'NONE'} packet - State: {conn.state.name}, seq={seq}, data_len={len(data)}")
+        else:
+            logger.debug(f"TCP: Processing {'/'.join(flag_names) if flag_names else 'NONE'} packet - NO CONNECTION, seq={seq}, data_len={len(data)}")
         
         if not conn:
             # Create new connection for SYN segments
