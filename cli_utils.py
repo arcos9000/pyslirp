@@ -100,6 +100,19 @@ Examples:
         version='PyLiRP 1.0.0'
     )
     
+    parser.add_argument(
+        '--testfor',
+        type=int,
+        metavar='SECONDS',
+        help='Maximum execution time in seconds before clean exit'
+    )
+    
+    parser.add_argument(
+        '--exit-on-peer-disconnect',
+        action='store_true',
+        help='Exit cleanly when peer disconnects after successful connection'
+    )
+    
     # Windows-specific arguments
     if platform.system() == 'Windows':
         parser.add_argument(

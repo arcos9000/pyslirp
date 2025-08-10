@@ -21,12 +21,15 @@ logger = logging.getLogger(__name__)
 class PyLiRPApplication:
     """Main application class integrating all components"""
     
-    def __init__(self, config_file: str = None, environment: str = None, mode: str = 'host'):
+    def __init__(self, config_file: str = None, environment: str = None, mode: str = 'host',
+                 testfor_timeout: int = None, exit_on_peer_disconnect: bool = False):
         self.config_manager = ConfigManager()
         self.config = None
         self.config_file = config_file
         self.environment = environment
         self.mode = mode
+        self.testfor_timeout = testfor_timeout
+        self.exit_on_peer_disconnect = exit_on_peer_disconnect
         
         # Core components
         self.ppp_bridge = None
@@ -245,12 +248,38 @@ class PyLiRPApplication:
             # Run the PPP bridge
             bridge_task = asyncio.create_task(self.ppp_bridge.run())
             shutdown_task = asyncio.create_task(self.shutdown_event.wait())
+            tasks = [bridge_task, shutdown_task]
             
-            # Wait for either the bridge to complete or shutdown signal
+            # Add timeout task if specified
+            timeout_task = None
+            if self.testfor_timeout:
+                logger.info(f"Setting execution timeout to {self.testfor_timeout} seconds")
+                timeout_task = asyncio.create_task(asyncio.sleep(self.testfor_timeout))
+                tasks.append(timeout_task)
+            
+            # Add peer disconnect monitoring if enabled
+            peer_disconnect_task = None
+            if self.exit_on_peer_disconnect:
+                logger.info("Peer disconnect monitoring enabled")
+                peer_disconnect_task = asyncio.create_task(self._monitor_peer_disconnect())
+                tasks.append(peer_disconnect_task)
+            
+            # Wait for any task to complete
             done, pending = await asyncio.wait(
-                [bridge_task, shutdown_task],
+                tasks,
                 return_when=asyncio.FIRST_COMPLETED
             )
+            
+            # Check what completed
+            for task in done:
+                if task == timeout_task:
+                    logger.info(f"Execution timeout reached ({self.testfor_timeout}s), exiting cleanly")
+                elif task == peer_disconnect_task:
+                    logger.info("Peer disconnected after successful connection, exiting cleanly")
+                elif task == bridge_task:
+                    logger.info("PPP bridge completed")
+                elif task == shutdown_task:
+                    logger.info("Shutdown signal received")
             
             # Cancel pending tasks
             for task in pending:
@@ -267,6 +296,38 @@ class PyLiRPApplication:
             raise
         finally:
             await self.shutdown()
+    
+    async def _monitor_peer_disconnect(self):
+        """Monitor for peer disconnect after successful connection"""
+        try:
+            # Wait for PPP connection to be established first
+            while (not hasattr(self.ppp_bridge, 'ppp_negotiator') or 
+                   not self.ppp_bridge.ppp_negotiator.is_ready_for_ip()):
+                await asyncio.sleep(0.5)
+            
+            logger.debug("PPP connection established, monitoring for disconnect")
+            connection_established = True
+            
+            # Monitor the connection state
+            while connection_established and self.running:
+                await asyncio.sleep(1.0)
+                
+                # Check if PPP connection is still active
+                if (hasattr(self.ppp_bridge, 'ppp_negotiator') and 
+                    not self.ppp_bridge.ppp_negotiator.is_ready_for_ip()):
+                    logger.info("PPP connection lost - peer disconnected")
+                    break
+                    
+                # Check for consecutive failed echo requests (indicates peer disconnect)
+                if (hasattr(self.ppp_bridge.ppp_negotiator, 'consecutive_echo_failures') and
+                    self.ppp_bridge.ppp_negotiator.consecutive_echo_failures >= 3):
+                    logger.info("Multiple echo failures - peer appears disconnected")
+                    break
+                    
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Peer disconnect monitoring error: {e}")
     
     async def shutdown(self):
         """Shutdown the application cleanly"""

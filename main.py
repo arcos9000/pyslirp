@@ -65,7 +65,13 @@ async def main():
     
     try:
         # Create and run application
-        app = PyLiRPApplication(args.config, args.environment, args.mode)
+        app = PyLiRPApplication(
+            args.config, 
+            args.environment, 
+            args.mode,
+            testfor_timeout=args.testfor,
+            exit_on_peer_disconnect=args.exit_on_peer_disconnect
+        )
         
         # Override config with command line arguments if provided
         if args.serial_port and not args.config:
