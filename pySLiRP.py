@@ -706,6 +706,7 @@ class TCPStateMachine:
         
         # Check ACK
         if flags & TCPFlags.ACK:
+            logger.debug(f"TCP: ACK validation - snd_una={conn.snd_una}, ack={ack}, snd_nxt={conn.snd_nxt}")
             if conn.snd_una <= ack <= conn.snd_nxt:
                 # Acceptable ACK
                 logger.info(f"TCP: Connection {conn.src_port}->{conn.dst_port} transitioning to ESTABLISHED")
@@ -721,6 +722,7 @@ class TCPStateMachine:
                     
             else:
                 # Unacceptable ACK
+                logger.error(f"TCP: UNACCEPTABLE ACK - expected {conn.snd_una} <= {ack} <= {conn.snd_nxt}, sending RST")
                 return self._create_rst_segment(
                     tcp_stack, segment_info,
                     seq=ack, ack=0, flags=TCPFlags.RST
