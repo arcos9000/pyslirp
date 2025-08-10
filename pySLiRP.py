@@ -772,8 +772,10 @@ class TCPStateMachine:
         
         # Process data using new bidirectional proxy pattern
         response = None
+        logger.debug(f"TCP: Processing data - seq={seq}, rcv_nxt={conn.rcv_nxt}, data_len={len(data) if data else 0}")
         if data:
             logger.debug(f"TCP: Data packet - seq={seq}, expected_rcv_nxt={conn.rcv_nxt}, len={len(data)}")
+            logger.debug(f"TCP: Data content preview: {data[:20]}")
             if seq == conn.rcv_nxt:
                 # Data in sequence
                 logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence")
@@ -814,6 +816,8 @@ class TCPStateMachine:
                 self._queue_out_of_order_segment(conn, seq, data)
                 # Send duplicate ACK
                 response = self._create_ack_segment(tcp_stack, segment_info, conn)
+        else:
+            logger.debug(f"TCP: No data in packet - seq={seq}, rcv_nxt={conn.rcv_nxt}, flags=0x{flags:02x}")
         
         # Check FIN
         if flags & TCPFlags.FIN:
@@ -1637,9 +1641,11 @@ class AsyncPPPNegotiator:
     async def handle_keepalive(self, writer: asyncio.StreamWriter):
         """Handle periodic keepalive tasks"""
         # Check if we need to timeout waiting for client
+        # In host mode, wait forever for client to connect (no timeout)
         if (self.is_server and not self.negotiation_initiated and 
             self.lcp_state == PPPState.STARTING and
-            time.time() - self.negotiation_start_time > self.negotiation_timeout):
+            time.time() - self.negotiation_start_time > self.negotiation_timeout and
+            False):  # Disabled timeout in host mode - wait forever for client
             logger.info("Server timeout waiting for client - initiating negotiation")
             self.negotiation_initiated = True
             lcp_request = await self.send_lcp_configure_request(writer)
@@ -2244,7 +2250,15 @@ class AsyncServiceProxy:
             except Exception as e:
                 logger.error(f"[ERROR] Failed to queue PPP data: {e}")
         else:
-            logger.warning(f"[WARN] No forwarding task available, dropping {len(data)} bytes")
+            logger.info(f"[RECONNECT] No forwarding task available, need to reconnect for {len(data)} bytes")
+            # Store data in connection buffer and trigger reconnection
+            conn.send_buffer = data
+            
+            # Trigger service proxy reconnection by calling handle_connection
+            # This will restart the forwarding task and reconnect to the service
+            key = (conn.src_port, conn.dst_port)
+            logger.info(f"[RECONNECT] Triggering service reconnection for {key[0]}->{key[1]}")
+            await self.handle_connection(conn, None)  # writer not needed for reconnection
     
     async def _cleanup_connection(self, conn: TCPConnection):
         """Clean up connection resources with proper coordination"""
