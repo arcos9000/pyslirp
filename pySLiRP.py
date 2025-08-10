@@ -792,6 +792,7 @@ class TCPStateMachine:
                         )
                 
                 # Queue data for bidirectional forwarding instead of forwarding directly
+                logger.info(f"[DATA] Queueing {len(data)} bytes for forwarding to service: {data[:20]}")
                 await tcp_stack.proxy.handle_ppp_data(conn, data)
                 
                 # Check for out-of-order segments that can now be processed
@@ -2036,10 +2037,19 @@ class AsyncServiceProxy:
             # Establish connection to target service
             logger.info(f"[CONNECT] Establishing bidirectional forwarding to {host}:{port}")
             logger.info(f"[CONNECT] Connection: {conn.src_port}->{conn.dst_port}")
-            conn.local_reader, conn.local_writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port),
-                timeout=10.0
-            )
+            
+            try:
+                conn.local_reader, conn.local_writer = await asyncio.wait_for(
+                    asyncio.open_connection(host, port),
+                    timeout=10.0
+                )
+            except ConnectionRefusedError:
+                logger.error(f"[ERROR] Connection refused to {host}:{port} - is the service running?")
+                logger.error(f"[ERROR] For echo server test, run: python3 simple_tcp_test.py")
+                raise
+            except Exception as e:
+                logger.error(f"[ERROR] Failed to connect to {host}:{port}: {e}")
+                raise
             logger.info(f"[SUCCESS] Connected to target service {host}:{port}")
             
             # Initialize shutdown event and data queue

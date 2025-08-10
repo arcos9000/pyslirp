@@ -344,8 +344,19 @@ class TCPPortForwarder:
         dst_port = packet_info.get('dst_port')
         src_port = packet_info.get('src_port')
         flags = packet_info.get('flags', 0)
+        seq_num = packet_info.get('seq_num', 0)
+        ack_num = packet_info.get('ack_num', 0)
+        data = packet_info.get('data', b'')
         
-        logger.debug(f"Forwarder received packet: {src_port}->{dst_port}, flags=0x{flags:02x}")
+        # Decode flags for debugging
+        flag_names = []
+        if flags & 0x01: flag_names.append("FIN")
+        if flags & 0x02: flag_names.append("SYN")
+        if flags & 0x04: flag_names.append("RST")
+        if flags & 0x08: flag_names.append("PSH")
+        if flags & 0x10: flag_names.append("ACK")
+        
+        logger.debug(f"Forwarder received: {src_port}->{dst_port}, flags={'/'.join(flag_names) if flag_names else 'NONE'} (0x{flags:02x}), seq={seq_num}, ack={ack_num}, data_len={len(data)}")
         
         if dst_port not in self.connections:
             logger.debug(f"No connection found for port {dst_port}")
