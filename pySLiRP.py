@@ -2451,6 +2451,8 @@ class AsyncPPPBridge:
             logger.info(f"[CLIENT] Config available: {self.config is not None}")
             if self.config and hasattr(self.config, 'port_forwards'):
                 logger.info(f"[CLIENT] Port forwards configured: {self.config.port_forwards}")
+            else:
+                logger.info(f"[CLIENT] No port_forwards attribute found")
             
             await self.tcp_forwarder.start_forwarders(self.config)
             

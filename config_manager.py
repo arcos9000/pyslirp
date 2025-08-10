@@ -421,6 +421,14 @@ class ConfigManager:
             
             config_kwargs['services'] = services
             
+            # Handle port_forwards (for client mode)
+            if 'port_forwards' in config_dict:
+                # Convert string keys to integers
+                port_forwards = {}
+                for local_port, remote_port in config_dict['port_forwards'].items():
+                    port_forwards[int(local_port)] = int(remote_port)
+                config_kwargs['port_forwards'] = port_forwards
+            
             return Config(**config_kwargs)
             
         except Exception as e:
