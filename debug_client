@@ -1,0 +1,24 @@
+2025-08-10 06:39:05,326 - tcp_forwarder - INFO - New connection on 127.0.0.1:8888 from ('127.0.0.1', 35144)
+2025-08-10 06:39:05,327 - tcp_forwarder - INFO - Sending SYN: 30000 -> 10.0.0.1:8888 (seq=2096048024)
+2025-08-10 06:39:05,328 - tcp_forwarder - DEBUG - Sending 46 bytes through serial: 10.0.0.2->10.0.0.1
+2025-08-10 06:39:05,329 - tcp_forwarder - INFO - SYN sent, connection 30000 now in SYN_SENT state
+2025-08-10 06:39:05,345 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=SYN/ACK (0x12), seq=1683537457, ack=2096048025, data_len=0
+2025-08-10 06:39:05,346 - tcp_forwarder - INFO - Received SYN|ACK for port 30000 - connection established!
+2025-08-10 06:39:05,348 - tcp_forwarder - DEBUG - Sending 46 bytes through serial: 10.0.0.2->10.0.0.1
+2025-08-10 06:39:05,358 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=ACK (0x10), seq=1683537458, ack=2096048025, data_len=0
+2025-08-10 06:39:05,431 - tcp_forwarder - INFO - Connection established for port 30000
+2025-08-10 06:39:08,621 - tcp_forwarder - DEBUG - Sending 6 bytes from local client through PPP for port 30000
+2025-08-10 06:39:08,622 - tcp_forwarder - DEBUG - Data packet: seq=2096048024, ack=1683537458, data='b'echo\r\n''
+2025-08-10 06:39:08,623 - tcp_forwarder - DEBUG - Sending 52 bytes through serial: 10.0.0.2->10.0.0.1
+2025-08-10 06:39:08,624 - tcp_forwarder - DEBUG - Sent 6 bytes, updated seq to 2096048030
+2025-08-10 06:39:08,644 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=ACK (0x10), seq=1683537458, ack=2096048031, data_len=0
+2025-08-10 06:39:08,645 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=PSH/ACK (0x18), seq=1683537457, ack=0, data_len=12
+2025-08-10 06:39:08,646 - tcp_forwarder - DEBUG - Forwarding 12 bytes from server to local client on port 30000
+2025-08-10 06:39:08,647 - tcp_forwarder - DEBUG - Successfully forwarded 12 bytes to local client
+2025-08-10 06:39:08,648 - tcp_forwarder - DEBUG - Sending 46 bytes through serial: 10.0.0.2->10.0.0.1
+2025-08-10 06:39:08,657 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=ACK (0x10), seq=1683537458, ack=2096048031, data_len=0
+2025-08-10 06:39:10,776 - tcp_forwarder - DEBUG - Sending 7 bytes from local client through PPP for port 30000
+2025-08-10 06:39:10,777 - tcp_forwarder - DEBUG - Data packet: seq=2096048030, ack=1683537469, data='b'bongo\r\n''
+2025-08-10 06:39:10,778 - tcp_forwarder - DEBUG - Sending 53 bytes through serial: 10.0.0.2->10.0.0.1
+2025-08-10 06:39:10,779 - tcp_forwarder - DEBUG - Sent 7 bytes, updated seq to 2096048037
+2025-08-10 06:39:10,793 - tcp_forwarder - DEBUG - Forwarder received: 8888->30000, flags=RST (0x04), seq=1683537469, ack=0, data_len=0
