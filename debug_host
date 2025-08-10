@@ -1,30 +1,126 @@
-2025-08-10 01:39:05,246 - pySLiRP - INFO - SYN+ACK IP packet created: 44 bytes
-2025-08-10 01:39:05,246 - pySLiRP - DEBUG - TCP stack generated 44 byte response
-2025-08-10 01:39:05,259 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x10
-2025-08-10 01:39:05,260 - pySLiRP - DEBUG - TCP: Processing ACK packet - State: SYN_RCVD, seq=2096048024, data_len=0
-2025-08-10 01:39:05,260 - pySLiRP - DEBUG - TCP: Sequence check - seq=2096048024, rcv_nxt=2096048025, acceptable=False
-2025-08-10 01:39:05,260 - pySLiRP - DEBUG - TCP: Rejecting packet due to unacceptable sequence number
-2025-08-10 01:39:05,261 - pySLiRP - DEBUG - TCP stack generated 40 byte response
-2025-08-10 01:39:06,248 - pySLiRP - DEBUG - Retransmitting segment for (30000, 8888, b'\n\x00\x00\x02', b'\n\x00\x00\x01')
-2025-08-10 01:39:08,544 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x18
-2025-08-10 01:39:08,544 - pySLiRP - DEBUG - TCP: Processing PSH/ACK packet - State: SYN_RCVD, seq=2096048024, data_len=6
-2025-08-10 01:39:08,545 - pySLiRP - DEBUG - TCP: Sequence check - seq=2096048024, rcv_nxt=2096048025, acceptable=True
-2025-08-10 01:39:08,545 - pySLiRP - DEBUG - TCP: ACK validation - snd_una=1683537457, ack=1683537458, snd_nxt=1683537458
-2025-08-10 01:39:08,545 - pySLiRP - INFO - TCP: Connection 30000->8888 transitioning to ESTABLISHED
-2025-08-10 01:39:08,546 - pySLiRP - INFO - TCP: Received 6 bytes of data from PPP client, forwarding to service
-2025-08-10 01:39:08,546 - pySLiRP - WARNING - TCP: No local service socket available to forward 6 bytes
-2025-08-10 01:39:08,546 - pySLiRP - DEBUG - TCP stack generated 40 byte response
-2025-08-10 01:39:08,546 - pySLiRP - INFO - Setting up service forwarding: 30000 -> 8888
-2025-08-10 01:39:08,546 - pySLiRP - INFO - Service connection established: 30000 -> 8888
-2025-08-10 01:39:08,547 - pySLiRP - INFO - ServiceProxy: Handling connection 30000->8888
-2025-08-10 01:39:08,547 - pySLiRP - INFO - ServiceProxy: Starting forward task for 30000->8888
-2025-08-10 01:39:08,547 - pySLiRP - INFO - ServiceProxy: Sending 6 bytes of buffered data to service
-2025-08-10 01:39:08,547 - pySLiRP - INFO - ServiceProxy: Starting data forwarding for 30000->8888
-2025-08-10 01:39:08,548 - pySLiRP - INFO - ServiceProxy: Received 12 bytes from service, forwarding to PPP
-2025-08-10 01:39:08,559 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x10
-2025-08-10 01:39:08,560 - pySLiRP - DEBUG - TCP: Processing ACK packet - State: ESTABLISHED, seq=2096048030, data_len=0
-2025-08-10 01:39:08,560 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
-2025-08-10 01:39:08,560 - pySLiRP - DEBUG - TCP stack generated 40 byte response
-2025-08-10 01:39:10,695 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x18
-2025-08-10 01:39:10,695 - pySLiRP - DEBUG - TCP: Processing PSH/ACK packet - NO CONNECTION, seq=2096048030, data_len=7
-2025-08-10 01:39:10,696 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+INFO:cli_utils:Running in virtual environment: C:\Users\na5772\PyLiRP\.venv
+INFO:cli_utils:Python executable: C:\Users\na5772\PyLiRP\.venv\Scripts\python.exe
+INFO:windows_support:Windows version detected: Windows 10 Enterprise Build 22631
+INFO:windows_support:Administrator privileges: No
+INFO:app:Starting PyLiRP application...
+INFO:windows_support:Windows version detected: Windows 10 Enterprise Build 22631
+INFO:windows_support:Administrator privileges: No
+INFO:app:Initializing Windows support...
+INFO:windows_support:Setting up Windows environment...
+INFO:windows_support:Process priority set to: high
+INFO:windows_support:Windows environment setup completed
+INFO:app:Loading configuration in host mode...
+INFO:config_manager:Using host mode configuration
+INFO:config_manager:Configuration loaded from .\config_unified.yaml
+2025-08-10 03:44:47,312 - app - INFO - Initializing security manager...
+2025-08-10 03:44:47,312 - security - INFO - Added service rule for port 22: max_conn=50
+2025-08-10 03:44:47,312 - security - INFO - Added service rule for port 8888: max_conn=50
+2025-08-10 03:44:47,313 - security - INFO - Added service rule for port 80: max_conn=50
+2025-08-10 03:44:47,313 - security - INFO - Added service rule for port 443: max_conn=50
+2025-08-10 03:44:47,313 - security - INFO - Security manager initialized
+2025-08-10 03:44:47,313 - app - INFO - Initializing monitoring...
+2025-08-10 03:44:47,313 - monitoring - INFO - Starting monitoring system
+2025-08-10 03:44:47,551 - monitoring - INFO - Metrics server started on port 9090
+2025-08-10 03:44:47,552 - monitoring - INFO - Monitoring system started
+2025-08-10 03:44:47,552 - app - INFO - Initializing connection pool...
+2025-08-10 03:44:47,552 - app - INFO - Initializing error recovery...
+2025-08-10 03:44:47,552 - error_recovery - INFO - Error recovery manager initialized
+2025-08-10 03:44:47,552 - error_recovery - INFO - Error recovery monitoring started
+2025-08-10 03:44:47,552 - app - INFO - Initializing PPP bridge...
+2025-08-10 03:44:47,552 - pySLiRP - INFO - PPP Negotiator initialized [Server] - Local: 10.0.0.1, Remote: 10.0.0.2
+2025-08-10 03:44:47,552 - pySLiRP - INFO - Magic Number: 0xA7B912FA
+2025-08-10 03:44:47,552 - pySLiRP - INFO - Service mapping: 22 -> 127.0.0.1:22 (SSH)
+2025-08-10 03:44:47,552 - pySLiRP - INFO - Service mapping: 8888 -> 127.0.0.1:8888 (Echo Server)
+2025-08-10 03:44:47,552 - app - INFO - Components integrated with PPP bridge
+2025-08-10 03:44:47,552 - app - INFO - All components initialized successfully
+2025-08-10 03:44:47,553 - app - INFO - Starting PPP bridge...
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Starting async PPP bridge on COM7
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Running as: SERVER (Host)
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Local IP: 10.0.0.1, Remote IP: 10.0.0.2
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Magic Number: 0xA7B912FA
+2025-08-10 03:44:47,553 - pySLiRP - INFO - MRU: 1500 bytes
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Direct connection mode
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Available services: [22, 8888]
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Service mappings:
+2025-08-10 03:44:47,553 - pySLiRP - INFO -   22 -> 127.0.0.1:22
+2025-08-10 03:44:47,553 - pySLiRP - INFO -   8888 -> 127.0.0.1:8888
+2025-08-10 03:44:47,553 - pySLiRP - INFO - PPP negotiation will begin automatically when client connects
+2025-08-10 03:44:47,553 - pySLiRP - INFO - 
+2025-08-10 03:44:47,553 - pySLiRP - INFO - Usage instructions:
+2025-08-10 03:44:47,553 - pySLiRP - INFO -   This is the SERVER (host). It provides local services to PPP clients.
+2025-08-10 03:44:47,553 - pySLiRP - INFO -   Clients should connect to 10.0.0.2:<port> to access services
+2025-08-10 03:44:47,557 - pySLiRP - INFO - Starting PPP negotiation as SERVER - waiting for client LCP Configure-Request
+2025-08-10 03:44:47,558 - pySLiRP - INFO - [HOST] Detected host mode - no client forwarders needed
+2025-08-10 03:44:51,549 - pySLiRP - INFO - Server received initial LCP Configure-Request from client
+2025-08-10 03:44:51,549 - pySLiRP - DEBUG - Sending LCP Configure-Request (ID: 1)
+2025-08-10 03:44:51,549 - pySLiRP - DEBUG - Peer magic number: 0xB8142C76
+2025-08-10 03:44:51,549 - pySLiRP - DEBUG - Peer MRU: 1500
+2025-08-10 03:44:51,564 - pySLiRP - INFO - LCP negotiation completed - Link established
+2025-08-10 03:44:51,564 - pySLiRP - DEBUG - LCP Configure-Ack received (ID: 1)
+2025-08-10 03:44:51,565 - pySLiRP - DEBUG - LCP opened - starting IPCP negotiation
+2025-08-10 03:44:51,565 - pySLiRP - DEBUG - Sending IPCP Configure-Request (ID: 1) - IP: 10.0.0.1
+2025-08-10 03:44:51,565 - pySLiRP - DEBUG - Peer IP address accepted: 10.0.0.2
+2025-08-10 03:44:51,580 - pySLiRP - INFO - IPCP negotiation completed - IP layer ready
+2025-08-10 03:44:51,580 - pySLiRP - DEBUG - IPCP Configure-Ack received (ID: 1)
+2025-08-10 03:44:51,581 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 2)
+2025-08-10 03:44:51,596 - pySLiRP - DEBUG - LCP Echo-Reply received (ID: 2)
+2025-08-10 03:44:52,602 - pySLiRP - DEBUG - Sending LCP Echo-Reply (ID: 2)
+2025-08-10 03:44:59,880 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x02
+2025-08-10 03:44:59,880 - pySLiRP - INFO - Server received SYN for service port 8888
+2025-08-10 03:44:59,881 - pySLiRP - INFO - Service connection prepared: 127.0.0.1:8888
+2025-08-10 03:44:59,881 - pySLiRP - DEBUG - TCP: Processing SYN packet - NO CONNECTION, seq=2689983789, data_len=0
+2025-08-10 03:44:59,882 - pySLiRP - INFO - Creating SYN+ACK: 8888->30000 seq=281760083 ack=2689983790
+2025-08-10 03:44:59,882 - pySLiRP - DEBUG - SYN+ACK Details: initial_seq=281760083, rcv_nxt=2689983790, client_seq=2689983789
+2025-08-10 03:44:59,882 - pySLiRP - INFO - SYN+ACK IP packet created: 44 bytes
+2025-08-10 03:44:59,882 - pySLiRP - DEBUG - TCP stack generated 44 byte response
+2025-08-10 03:44:59,896 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x10
+2025-08-10 03:44:59,896 - pySLiRP - DEBUG - TCP: Processing ACK packet - State: SYN_RCVD, seq=2689983789, data_len=0
+2025-08-10 03:44:59,896 - pySLiRP - DEBUG - TCP: Sequence check - seq=2689983789, rcv_nxt=2689983790, acceptable=False
+2025-08-10 03:44:59,896 - pySLiRP - DEBUG - TCP: Rejecting packet due to unacceptable sequence number
+2025-08-10 03:44:59,896 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:00,980 - pySLiRP - DEBUG - Retransmitting segment for (30000, 8888, b'\n\x00\x00\x02', b'\n\x00\x00\x01')
+2025-08-10 03:45:02,379 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x18
+2025-08-10 03:45:02,379 - pySLiRP - DEBUG - TCP: Processing PSH/ACK packet - State: SYN_RCVD, seq=2689983789, data_len=6
+2025-08-10 03:45:02,379 - pySLiRP - DEBUG - TCP: Sequence check - seq=2689983789, rcv_nxt=2689983790, acceptable=True
+2025-08-10 03:45:02,379 - pySLiRP - DEBUG - TCP: ACK validation - snd_una=281760083, ack=281760084, snd_nxt=281760084
+2025-08-10 03:45:02,379 - pySLiRP - INFO - TCP: Connection 30000->8888 transitioning to ESTABLISHED
+2025-08-10 03:45:02,380 - pySLiRP - INFO - TCP: Received 6 bytes of data from PPP client, forwarding to service
+2025-08-10 03:45:02,380 - pySLiRP - WARNING - TCP: No local service socket available to forward 6 bytes
+2025-08-10 03:45:02,380 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:02,380 - pySLiRP - INFO - Setting up service forwarding: 30000 -> 8888
+2025-08-10 03:45:02,380 - pySLiRP - INFO - Service connection established: 30000 -> 8888
+2025-08-10 03:45:02,380 - pySLiRP - INFO - ServiceProxy: Handling connection 30000->8888
+2025-08-10 03:45:02,380 - pySLiRP - INFO - ServiceProxy: Starting forward task for 30000->8888
+2025-08-10 03:45:02,380 - pySLiRP - INFO - ServiceProxy: Sending 6 bytes of buffered data to service
+2025-08-10 03:45:02,381 - pySLiRP - INFO - ServiceProxy: Starting data forwarding for 30000->8888
+2025-08-10 03:45:02,381 - pySLiRP - INFO - ServiceProxy: Received 12 bytes from service, forwarding to PPP
+2025-08-10 03:45:02,394 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x10
+2025-08-10 03:45:02,394 - pySLiRP - DEBUG - TCP: Processing ACK packet - State: ESTABLISHED, seq=2689983795, data_len=0
+2025-08-10 03:45:02,394 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
+2025-08-10 03:45:02,394 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:02,488 - pySLiRP - DEBUG - ServiceProxy: Service connection closed for 30000->8888, but keeping TCP connection alive
+2025-08-10 03:45:04,250 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x18
+2025-08-10 03:45:04,250 - pySLiRP - DEBUG - TCP: Processing PSH/ACK packet - State: ESTABLISHED, seq=2689983795, data_len=7
+2025-08-10 03:45:04,250 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
+2025-08-10 03:45:04,250 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:06,102 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x18
+2025-08-10 03:45:06,102 - pySLiRP - DEBUG - TCP: Processing PSH/ACK packet - State: ESTABLISHED, seq=2689983802, data_len=7
+2025-08-10 03:45:06,102 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
+2025-08-10 03:45:06,102 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:09,274 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x18
+2025-08-10 03:45:09,274 - pySLiRP - DEBUG - TCP: Processing PSH/ACK packet - State: ESTABLISHED, seq=2689983809, data_len=5
+2025-08-10 03:45:09,274 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
+2025-08-10 03:45:09,274 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:13,561 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x11
+2025-08-10 03:45:13,561 - pySLiRP - DEBUG - TCP: Processing FIN/ACK packet - State: ESTABLISHED, seq=2689983814, data_len=0
+2025-08-10 03:45:13,562 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
+2025-08-10 03:45:13,562 - pySLiRP - DEBUG - TCP stack generated 40 byte response
+2025-08-10 03:45:13,576 - pySLiRP - DEBUG - Server received TCP packet: 30000->8888, flags=0x04
+2025-08-10 03:45:13,577 - pySLiRP - DEBUG - TCP: Processing RST packet - State: ESTABLISHED, seq=2689983796, data_len=0
+2025-08-10 03:45:13,577 - pySLiRP - DEBUG - TCP: Routing to ESTABLISHED state handler for 30000->8888
+2025-08-10 03:45:13,577 - pySLiRP - DEBUG - TCP stack generated no response
+2025-08-10 03:45:21,747 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 3)
+2025-08-10 03:45:21,763 - pySLiRP - DEBUG - LCP Echo-Reply received (ID: 3)
+2025-08-10 03:45:22,580 - pySLiRP - DEBUG - Sending LCP Echo-Reply (ID: 3)
+2025-08-10 03:45:51,912 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 4)
+2025-08-10 03:46:22,056 - pySLiRP - DEBUG - Sending LCP Echo-Request (ID: 5)
