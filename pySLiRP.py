@@ -776,6 +776,7 @@ class TCPStateMachine:
         if data:
             logger.debug(f"TCP: Data packet - seq={seq}, expected_rcv_nxt={conn.rcv_nxt}, len={len(data)}")
             logger.debug(f"TCP: Data content preview: {data[:20]}")
+            # Check if this is in-sequence data (most common case)
             if seq == conn.rcv_nxt:
                 # Data in sequence
                 logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence")
@@ -810,8 +811,54 @@ class TCPStateMachine:
                 
                 # Send ACK (non-blocking)
                 response = self._create_ack_segment(tcp_stack, segment_info, conn)
+            elif seq < conn.rcv_nxt:
+                # Data we've already received (retransmission or overlap)
+                logger.debug(f"TCP: Retransmitted or overlapping data - seq={seq}, rcv_nxt={conn.rcv_nxt}, treating as acceptable")
+                overlap_start = max(0, conn.rcv_nxt - seq)
+                new_data = data[overlap_start:]
+                if new_data:
+                    logger.info(f"TCP: ESTABLISHED state - processing {len(new_data)} bytes of new data from retransmission")
+                    conn.rcv_nxt += len(new_data)
+                    
+                    # Check if this is first data in ESTABLISHED state - establish bidirectional forwarding
+                    if not hasattr(conn, 'proxy_task') or conn.proxy_task is None:
+                        logger.info(f"[SETUP] First data in ESTABLISHED state for {conn.src_port}->{conn.dst_port} - establishing bidirectional forwarding")
+                        logger.info(f"[SETUP] Data content: {new_data[:50]} (showing first 50 bytes)")
+                        
+                        # Map destination port to service
+                        service_port = tcp_stack._map_service_port(conn.dst_port)
+                        success = await tcp_stack.proxy.establish_bidirectional_forwarding(
+                            conn, "127.0.0.1", service_port, writer
+                        )
+                        
+                        if not success:
+                            # Forwarding failed, close connection
+                            logger.error("Failed to establish bidirectional forwarding, closing connection")
+                            conn.state = TCPState.CLOSED
+                            return self._create_rst_segment(
+                                tcp_stack, segment_info,
+                                seq=conn.snd_nxt, ack=conn.rcv_nxt, flags=TCPFlags.RST
+                            )
+                        
+                        # Queue data for bidirectional forwarding instead of forwarding directly
+                        logger.info(f"[DATA] Queueing {len(new_data)} bytes for forwarding to service: {new_data[:20]}")
+                        await tcp_stack.proxy.handle_ppp_data(conn, new_data)
+                        
+                        # Check for out-of-order segments that can now be processed
+                        await self._process_out_of_order_queue(conn, writer)
+                        
+                        # Send ACK (non-blocking)
+                        response = self._create_ack_segment(tcp_stack, segment_info, conn)
+                    else:
+                        # Forwarding already established, just forward the new data
+                        logger.info(f"[DATA] Queueing {len(new_data)} bytes for forwarding to service: {new_data[:20]}")
+                        await tcp_stack.proxy.handle_ppp_data(conn, new_data)
+                        response = self._create_ack_segment(tcp_stack, segment_info, conn)
+                else:
+                    logger.debug(f"TCP: No new data in retransmission, just ACKing")
+                    response = self._create_ack_segment(tcp_stack, segment_info, conn)
             else:
-                # Out of sequence data
+                # Out of sequence data (future data)
                 logger.debug(f"TCP: Out of sequence data - expected seq {conn.rcv_nxt}, got {seq}, queueing")
                 self._queue_out_of_order_segment(conn, seq, data)
                 # Send duplicate ACK
