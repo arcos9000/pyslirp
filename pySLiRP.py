@@ -1971,9 +1971,12 @@ class AsyncServiceProxy:
         key = (conn.src_port, conn.dst_port)
         logger.info(f"ServiceProxy: Handling connection {key[0]}->{key[1]}")
         
-        # Create task to forward data from service
-        if key not in self.service_tasks:
-            logger.info(f"ServiceProxy: Starting forward task for {key[0]}->{key[1]}")
+        # Create task to forward data from service (or restart if previous one finished)
+        if key not in self.service_tasks or self.service_tasks[key].done():
+            if key in self.service_tasks and self.service_tasks[key].done():
+                logger.info(f"ServiceProxy: Previous forward task completed, starting new one for {key[0]}->{key[1]}")
+            else:
+                logger.info(f"ServiceProxy: Starting forward task for {key[0]}->{key[1]}")
             task = asyncio.create_task(
                 self.forward_service_data(conn, writer)
             )
@@ -1986,6 +1989,19 @@ class AsyncServiceProxy:
             data = conn.send_buffer
             conn.send_buffer = b''
             logger.info(f"ServiceProxy: Sending {len(data)} bytes of buffered data to service")
+            
+            # Reconnect to service if connection was closed
+            if not conn.local_sock:
+                logger.info(f"ServiceProxy: Reconnecting to service for {key[0]}->{key[1]}")
+                service_info = self.services.get(conn.dst_port)
+                if service_info:
+                    host, port = service_info
+                    try:
+                        conn.local_reader, conn.local_sock = await self.connect_to_service(host, port)
+                        logger.info(f"ServiceProxy: Reconnected to {host}:{port}")
+                    except Exception as e:
+                        logger.error(f"ServiceProxy: Failed to reconnect to service: {e}")
+                        return b''
             
             if conn.local_sock:
                 conn.local_sock.write(data)
@@ -2045,8 +2061,9 @@ class AsyncServiceProxy:
             key = (conn.src_port, conn.dst_port)
             if key in self.service_tasks:
                 del self.service_tasks[key]
-            if key in self.tcp_stack.connections:
-                del self.tcp_stack.connections[key]
+            # Do NOT delete the TCP connection - it should persist for multiple service connections
+            # The TCP connection will be cleaned up when the PPP client closes it
+            logger.debug(f"ServiceProxy: Service connection closed for {key[0]}->{key[1]}, but keeping TCP connection alive")
     
     async def establish_bidirectional_forwarding(self, conn: TCPConnection, 
                                                host: str, port: int, 
