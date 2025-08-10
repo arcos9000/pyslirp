@@ -601,6 +601,7 @@ class TCPStateMachine:
             options_data = self._build_syn_options(conn)
             
             logger.info(f"Creating SYN+ACK: {segment_info['dst_port']}->{segment_info['src_port']} seq={conn.initial_seq} ack={conn.rcv_nxt}")
+            logger.debug(f"SYN+ACK Details: initial_seq={conn.initial_seq}, rcv_nxt={conn.rcv_nxt}, client_seq={segment_info['seq']}")
             
             tcp_segment = self._create_tcp_segment(
                 tcp_stack, segment_info,
@@ -766,6 +767,7 @@ class TCPStateMachine:
         # Process data using new bidirectional proxy pattern
         response = None
         if data:
+            logger.debug(f"TCP: Data packet - seq={seq}, expected_rcv_nxt={conn.rcv_nxt}, len={len(data)}")
             if seq == conn.rcv_nxt:
                 # Data in sequence
                 logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence")
