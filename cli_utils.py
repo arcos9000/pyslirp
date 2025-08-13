@@ -6,12 +6,12 @@ Command line argument parsing and validation functions
 
 import argparse
 import platform
-import logging
 import sys
 
 from config_manager import ConfigManager
+from safe_logger import get_safe_logger
 
-logger = logging.getLogger(__name__)
+logger = get_safe_logger(__name__)
 
 def create_argument_parser():
     """Create command line argument parser"""

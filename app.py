@@ -188,49 +188,11 @@ class PyLiRPApplication:
         )
     
     def _setup_logging(self):
-        """Setup logging based on configuration"""
-        # Set root log level
-        logging.getLogger().setLevel(getattr(logging, self.config.logging.level))
-        
-        # Clear existing handlers
-        logging.getLogger().handlers.clear()
-        
-        # Console logging
-        if self.config.logging.console.enabled:
-            console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(self.config.logging.format)
-            console_handler.setFormatter(console_formatter)
-            logging.getLogger().addHandler(console_handler)
-        
-        # File logging
-        if self.config.logging.file.enabled:
-            from logging.handlers import RotatingFileHandler
-            
-            # Ensure log directory exists
-            log_path = Path(self.config.logging.file.path)
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Parse max size
-            max_size = self.config.logging.file.max_size
-            if max_size.endswith('MB'):
-                max_bytes = int(max_size[:-2]) * 1024 * 1024
-            elif max_size.endswith('GB'):
-                max_bytes = int(max_size[:-2]) * 1024 * 1024 * 1024
-            else:
-                max_bytes = int(max_size)
-            
-            file_handler = RotatingFileHandler(
-                self.config.logging.file.path,
-                maxBytes=max_bytes,
-                backupCount=self.config.logging.file.rotate_count
-            )
-            file_formatter = logging.Formatter(self.config.logging.format)
-            file_handler.setFormatter(file_formatter)
-            logging.getLogger().addHandler(file_handler)
-        
-        # Component-specific logging levels
-        for component, level in self.config.logging.components.items():
-            logging.getLogger(component).setLevel(getattr(logging, level))
+        """Setup logging based on configuration - now handled by safe_logger in main.py"""
+        # Logging is now handled by safe_logger system in main.py
+        # This method is preserved for compatibility but does nothing
+        # to avoid permission-related crashes on systems like PiKVM
+        pass
     
     def _integrate_components(self):
         """Integrate enhancement components with PPP bridge"""

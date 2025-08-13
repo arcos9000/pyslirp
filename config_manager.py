@@ -7,13 +7,14 @@ Handles YAML configuration loading, validation, and environment-specific overrid
 import os
 import sys
 import yaml
-import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass, field
 from copy import deepcopy
 
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger
+
+logger = get_safe_logger(__name__)
 
 @dataclass
 class SerialConfig:
