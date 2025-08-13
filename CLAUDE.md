@@ -197,6 +197,61 @@ class WebInterface:
         pass
 ```
 
+## 🔧 **Project Settings and Commands**
+
+### **Repository Information**
+- **Repository URL**: https://github.com/arcos9000/pyslirp.git
+- **Working Directory**: /mnt/dev/pikvm/pikvm_slirp
+- **Main Branch**: main
+- **Git Operations**: Auto-push enabled for all commits
+
+### **Key Project Paths**
+```
+/mnt/dev/pikvm/pikvm_slirp/
+├── main.py                     # Main entry point
+├── app.py                      # Application class
+├── pySLiRP.py                  # Core PPP/TCP implementation
+├── tcp_forwarder.py            # Client-side TCP forwarding
+├── safe_logger.py              # Safe logging wrapper
+├── config_*.yaml               # Configuration files
+├── install_*.sh                # Installation scripts
+├── test_*.py                   # Test scripts
+└── README_PIKVM.md             # PiKVM deployment guide
+```
+
+### **Common Commands**
+```bash
+# Development and Testing
+python3 main.py --help                                    # Show help
+python3 main.py --config config.yaml --logging           # Run with logging
+python3 main.py --config config_pikvm.yaml --mode host   # Host mode
+python3 main.py --config config_unified.yaml --mode client # Client mode
+python3 test_tcp_fix.py                                   # Test TCP fixes
+python3 test_logging.py                                   # Test logging
+python3 simple_tcp_test.py                               # Echo server test
+
+# PiKVM Deployment
+sudo ./install_pikvm.sh                                   # Install on PiKVM
+systemctl status pyslirp-pikvm                           # Check service
+journalctl -u pyslirp-pikvm -f                          # View logs
+
+# Git Operations (auto-handled)
+git add -A && git commit -m "message" && git push origin main
+```
+
+### **Configuration Notes**
+- **Default**: Logging disabled (no permission issues)
+- **Enable logging**: Use `--logging` flag
+- **PiKVM serial**: Uses `/dev/ttyGS0` (USB gadget)
+- **Client serial**: Uses `/dev/ttyUSB0` (typical USB-serial)
+- **Service ports**: 22 (SSH), 80/443 (HTTP/S), 8888 (test echo)
+
+### **Recent Fixes Applied**
+- ✅ TCP ACK sequence number tracking bug fixed
+- ✅ Safe logging with permission checks implemented
+- ✅ PiKVM deployment configuration completed
+- ✅ Auto-git push enabled for development workflow
+
 ## 📊 **Production Deployment Status**
 
 ### **Current Release: v1.1.0**
