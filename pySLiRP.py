@@ -2187,9 +2187,9 @@ class AsyncServiceProxy:
             )
             
         except Exception as e:
-            logger.error(f"Bidirectional forwarding error: {e}")
+            logger.error(f"[DEBUG] Bidirectional forwarding error for {conn.src_port}->{conn.dst_port}: {e}")
         finally:
-            logger.info(f"Bidirectional forwarding ended for {conn.src_port}->{conn.dst_port}")
+            logger.info(f"[DEBUG] GATHER: Bidirectional forwarding ended for {conn.src_port}->{conn.dst_port}")
             await self._cleanup_connection(conn)
     
     async def _forward_ppp_to_service(self, conn: TCPConnection):
@@ -2238,27 +2238,33 @@ class AsyncServiceProxy:
         logger.debug("Starting Service -> PPP forwarding")
         
         try:
+            logger.info(f"[DEBUG] Service->PPP forwarding started for {conn.src_port}->{conn.dst_port}")
             while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
+                logger.debug(f"[DEBUG] Service->PPP: Waiting for data from service, state={conn.state.name}")
                 try:
                     # Read data from service with timeout to avoid blocking forever
                     data = await asyncio.wait_for(conn.local_reader.read(4096), timeout=1.0)
                     
                     if not data:  # Service closed connection
-                        logger.info("Service closed connection, initiating shutdown")
+                        logger.info(f"[DEBUG] Service->PPP: Service closed connection (0 bytes), initiating shutdown")
                         break
+                    
+                    logger.info(f"[DEBUG] Service->PPP: Received {len(data)} bytes from service: {data[:50]}")
                 except asyncio.TimeoutError:
                     # No data available, continue checking for shutdown
+                    logger.debug(f"[DEBUG] Service->PPP: Timeout waiting for service data, continuing...")
                     continue
                 
                 # Send data through PPP
+                logger.info(f"[DEBUG] Service->PPP: Sending {len(data)} bytes to PPP client")
                 await self._send_data_to_ppp(conn, data, serial_writer)
-                logger.debug(f"Forwarded {len(data)} bytes Service -> PPP")
+                logger.info(f"[DEBUG] Service->PPP: Successfully forwarded {len(data)} bytes Service -> PPP")
                 
         except Exception as e:
             logger.error(f"Service -> PPP forwarding error: {e}")
             raise
         finally:
-            logger.debug("Service -> PPP forwarding stopped")
+            logger.info(f"[DEBUG] Service->PPP forwarding stopped for {conn.src_port}->{conn.dst_port}")
             conn._shutdown_event.set()  # Signal other direction to stop
     
     async def _send_data_to_ppp(self, conn: TCPConnection, data: bytes, 
@@ -2315,7 +2321,7 @@ class AsyncServiceProxy:
     
     async def _cleanup_connection(self, conn: TCPConnection):
         """Clean up connection resources with proper coordination"""
-        logger.info(f"Cleaning up bidirectional connection {conn.src_port}->{conn.dst_port}")
+        logger.info(f"[DEBUG] CLEANUP: Cleaning up bidirectional connection {conn.src_port}->{conn.dst_port}")
         
         # Signal shutdown to forwarding tasks
         if hasattr(conn, '_shutdown_event') and conn._shutdown_event:
