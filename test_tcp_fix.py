@@ -12,10 +12,9 @@ import time
 # Use safe logging system
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from safe_logger import setup_safe_logging, get_safe_logger
+from safe_logger import get_safe_logger
 
-# Set up safe logging
-setup_safe_logging(enabled=True)
+# Note: Logging is controlled by main application, not test script
 logger = get_safe_logger(__name__)
 
 async def test_echo_server():

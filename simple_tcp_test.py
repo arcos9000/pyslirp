@@ -9,10 +9,11 @@ the PPP connection to verify fundamental packet flow is working.
 import asyncio
 import socket
 import struct
-import logging
 import random
 
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger
+
+logger = get_safe_logger(__name__)
 
 class SimpleEchoServer:
     """Simple TCP echo server for testing"""
@@ -198,7 +199,7 @@ class SimpleTCPTester:
 
 async def run_simple_test():
     """Run simple TCP test"""
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    # Logging setup is now handled by safe_logger system
     
     # Start echo server
     echo_server = SimpleEchoServer(8888)
