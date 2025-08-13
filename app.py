@@ -85,7 +85,7 @@ class PyLiRPApplication:
         windows_manager = get_windows_manager()
         
         if windows_manager:
-            logger.info("Initializing Windows support...")
+            self._log_or_print("info", "Initializing Windows support...")
             use_firewall = windows_manager.platform_manager.admin_privileges
             await windows_manager.setup_windows_environment({
                 'setup_firewall': use_firewall,
@@ -107,7 +107,7 @@ class PyLiRPApplication:
     
     async def _init_security(self):
         """Initialize security manager"""
-        logger.info("Initializing security manager...")
+        self._log_or_print("info", "Initializing security manager...")
         security_config = {
             'enabled': True,
             'allowed_ports': self.config.security.allowed_ports,
@@ -126,7 +126,7 @@ class PyLiRPApplication:
     
     async def _init_monitoring(self):
         """Initialize monitoring manager"""
-        logger.info("Initializing monitoring...")
+        self._log_or_print("info", "Initializing monitoring...")
         monitoring_config = {
             'metrics_port': self.config.monitoring.metrics_port,
             'enable_metrics': self.config.monitoring.enable_metrics,
@@ -142,7 +142,7 @@ class PyLiRPApplication:
     
     async def _init_connection_pool(self):
         """Initialize connection pool"""
-        logger.info("Initializing connection pool...")
+        self._log_or_print("info", "Initializing connection pool...")
         self.connection_pool = ConnectionPool(
             max_connections=self.config.security.connection_limits.global_max_connections,
             idle_timeout=300,
@@ -160,7 +160,7 @@ class PyLiRPApplication:
     
     async def _init_error_recovery(self):
         """Initialize error recovery manager"""
-        logger.info("Initializing error recovery...")
+        self._log_or_print("info", "Initializing error recovery...")
         error_config = {
             'max_retry_attempts': self.config.error_recovery.max_service_retry_attempts,
             'retry_base_delay': self.config.error_recovery.service_retry_delay,
@@ -175,7 +175,7 @@ class PyLiRPApplication:
     
     async def _init_ppp_bridge(self):
         """Initialize PPP bridge"""
-        logger.info("Initializing PPP bridge...")
+        self._log_or_print("info", "Initializing PPP bridge...")
         socks_host = self.config.proxy.host if self.config.proxy.enabled else None
         socks_port = self.config.proxy.port if self.config.proxy.enabled else None
         
@@ -236,12 +236,12 @@ class PyLiRPApplication:
         """Integrate enhancement components with PPP bridge"""
         # This would integrate the security, monitoring, connection pool,
         # and error recovery components with the main PPP bridge
-        logger.info("Components integrated with PPP bridge")
+        self._log_or_print("info", "Components integrated with PPP bridge")
     
     async def start(self):
         """Start the application"""
         try:
-            logger.info("Starting PyLiRP application...")
+            self._log_or_print("info", "Starting PyLiRP application...")
             
             await self.initialize()
             
@@ -249,7 +249,7 @@ class PyLiRPApplication:
             self._setup_signal_handlers()
             
             # Start the main PPP bridge
-            logger.info("Starting PPP bridge...")
+            self._log_or_print("info", "Starting PPP bridge...")
             self.running = True
             
             # Run the PPP bridge
@@ -260,14 +260,14 @@ class PyLiRPApplication:
             # Add timeout task if specified
             timeout_task = None
             if self.testfor_timeout:
-                logger.info(f"Setting execution timeout to {self.testfor_timeout} seconds")
+                self._log_or_print("info", f"Setting execution timeout to {self.testfor_timeout} seconds")
                 timeout_task = asyncio.create_task(asyncio.sleep(self.testfor_timeout))
                 tasks.append(timeout_task)
             
             # Add peer disconnect monitoring if enabled
             peer_disconnect_task = None
             if self.exit_on_peer_disconnect:
-                logger.info("Peer disconnect monitoring enabled")
+                self._log_or_print("info", "Peer disconnect monitoring enabled")
                 peer_disconnect_task = asyncio.create_task(self._monitor_peer_disconnect())
                 tasks.append(peer_disconnect_task)
             
@@ -280,13 +280,13 @@ class PyLiRPApplication:
             # Check what completed
             for task in done:
                 if task == timeout_task:
-                    logger.info(f"Execution timeout reached ({self.testfor_timeout}s), exiting cleanly")
+                    self._log_or_print("info", f"Execution timeout reached ({self.testfor_timeout}s), exiting cleanly")
                 elif task == peer_disconnect_task:
-                    logger.info("Peer disconnected after successful connection, exiting cleanly")
+                    self._log_or_print("info", "Peer disconnected after successful connection, exiting cleanly")
                 elif task == bridge_task:
-                    logger.info("PPP bridge completed")
+                    self._log_or_print("info", "PPP bridge completed")
                 elif task == shutdown_task:
-                    logger.info("Shutdown signal received")
+                    self._log_or_print("info", "Shutdown signal received")
             
             # Cancel pending tasks
             for task in pending:
@@ -296,10 +296,10 @@ class PyLiRPApplication:
                 except asyncio.CancelledError:
                     pass
             
-            logger.info("PyLiRP application stopped")
+            self._log_or_print("info", "PyLiRP application stopped")
             
         except Exception as e:
-            logger.error(f"Application error: {e}")
+            self._log_or_print("error", f"Application error: {e}")
             raise
         finally:
             await self.shutdown()
@@ -312,7 +312,7 @@ class PyLiRPApplication:
                    not self.ppp_bridge.ppp_negotiator.is_ready_for_ip()):
                 await asyncio.sleep(0.5)
             
-            logger.debug("PPP connection established, monitoring for disconnect")
+            self._log_or_print("debug", "PPP connection established, monitoring for disconnect")
             connection_established = True
             
             # Monitor the connection state
@@ -322,26 +322,26 @@ class PyLiRPApplication:
                 # Check if PPP connection is still active
                 if (hasattr(self.ppp_bridge, 'ppp_negotiator') and 
                     not self.ppp_bridge.ppp_negotiator.is_ready_for_ip()):
-                    logger.info("PPP connection lost - peer disconnected")
+                    self._log_or_print("info", "PPP connection lost - peer disconnected")
                     break
                     
                 # Check for consecutive failed echo requests (indicates peer disconnect)
                 if (hasattr(self.ppp_bridge.ppp_negotiator, 'consecutive_echo_failures') and
                     self.ppp_bridge.ppp_negotiator.consecutive_echo_failures >= 3):
-                    logger.info("Multiple echo failures - peer appears disconnected")
+                    self._log_or_print("info", "Multiple echo failures - peer appears disconnected")
                     break
                     
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error(f"Peer disconnect monitoring error: {e}")
+            self._log_or_print("error", f"Peer disconnect monitoring error: {e}")
     
     async def shutdown(self):
         """Shutdown the application cleanly"""
         if not self.running:
             return
         
-        logger.info("Shutting down PyLiRP application...")
+        self._log_or_print("info", "Shutting down PyLiRP application...")
         self.running = False
         
         # Shutdown components in reverse order
@@ -357,14 +357,14 @@ class PyLiRPApplication:
         if self.security_manager:
             await self.security_manager.shutdown()
         
-        logger.info("PyLiRP application shutdown complete")
+        self._log_or_print("info", "PyLiRP application shutdown complete")
     
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown"""
         import signal
         
         def signal_handler(signum, frame):
-            logger.info(f"Received signal {signum}, initiating shutdown...")
+            self._log_or_print("info", f"Received signal {signum}, initiating shutdown...")
             if platform.system() == 'Windows':
                 from windows_support import get_windows_manager
                 windows_manager = get_windows_manager()
