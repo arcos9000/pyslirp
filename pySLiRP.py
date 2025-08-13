@@ -2246,8 +2246,13 @@ class AsyncServiceProxy:
                     data = await asyncio.wait_for(conn.local_reader.read(4096), timeout=1.0)
                     
                     if not data:  # Service closed connection
-                        logger.info(f"[DEBUG] Service->PPP: Service closed connection (0 bytes), initiating shutdown")
-                        break
+                        # Double-check if connection is actually closed by checking if we can write
+                        if conn.local_writer.is_closing():
+                            logger.info(f"[DEBUG] Service->PPP: Service connection actually closed, initiating shutdown")
+                            break
+                        else:
+                            logger.debug(f"[DEBUG] Service->PPP: Got 0 bytes but connection still open, continuing...")
+                            continue
                     
                     logger.info(f"[DEBUG] Service->PPP: Received {len(data)} bytes from service: {data[:50]}")
                 except asyncio.TimeoutError:
