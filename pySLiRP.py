@@ -2239,12 +2239,16 @@ class AsyncServiceProxy:
         
         try:
             while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
-                # Read data from service (blocks until data available)
-                data = await conn.local_reader.read(4096)
-                
-                if not data:  # Service closed connection
-                    logger.info("Service closed connection, initiating shutdown")
-                    break
+                try:
+                    # Read data from service with timeout to avoid blocking forever
+                    data = await asyncio.wait_for(conn.local_reader.read(4096), timeout=1.0)
+                    
+                    if not data:  # Service closed connection
+                        logger.info("Service closed connection, initiating shutdown")
+                        break
+                except asyncio.TimeoutError:
+                    # No data available, continue checking for shutdown
+                    continue
                 
                 # Send data through PPP
                 await self._send_data_to_ppp(conn, data, serial_writer)
