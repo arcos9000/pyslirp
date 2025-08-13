@@ -6,14 +6,15 @@ Provides comprehensive error handling, recovery mechanisms, and system resilienc
 
 import asyncio
 import time
-import logging
 from typing import Dict, List, Optional, Callable, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from collections import defaultdict, deque
 import traceback
 
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger
+
+logger = get_safe_logger(__name__)
 
 class ErrorType(Enum):
     """Types of errors that can occur"""

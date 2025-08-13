@@ -8,14 +8,15 @@ import asyncio
 import socket
 import sys
 import time
-import logging
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Use safe logging system
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from safe_logger import setup_safe_logging, get_safe_logger
+
+# Set up safe logging
+setup_safe_logging(enabled=True)
+logger = get_safe_logger(__name__)
 
 async def test_echo_server():
     """Test echo server connectivity through PyLiRP"""

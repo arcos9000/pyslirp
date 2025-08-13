@@ -15,10 +15,11 @@ from collections import defaultdict, deque
 from typing import Dict, Set, Optional, List, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum, auto
-import logging
 from datetime import datetime, timedelta
 
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger
+
+logger = get_safe_logger(__name__)
 
 class SecurityEventType(Enum):
     """Types of security events"""
@@ -439,40 +440,19 @@ class SecurityAuditor:
             self._setup_file_logging()
     
     def _setup_file_logging(self):
-        """Setup file logging for security events"""
-        try:
-            import logging.handlers
-            
-            # Create rotating file handler
-            self._file_handler = logging.handlers.RotatingFileHandler(
-                self.log_file,
-                maxBytes=10*1024*1024,  # 10MB
-                backupCount=5
-            )
-            
-            # JSON formatter for structured logs
-            formatter = logging.Formatter(
-                '%(asctime)s - SECURITY - %(message)s'
-            )
-            self._file_handler.setFormatter(formatter)
-            
-            # Add to security logger
-            security_logger = logging.getLogger('security')
-            security_logger.addHandler(self._file_handler)
-            security_logger.setLevel(logging.INFO)
-            
-        except Exception as e:
-            logger.error(f"Failed to setup security audit logging: {e}")
+        """Setup file logging for security events - disabled for safe operation"""
+        # File logging is disabled to prevent permission issues on systems like PiKVM
+        # Security events are still tracked in memory for monitoring
+        self._file_handler = None
+        logger.debug("Security file logging disabled for safe operation")
     
     def log_event(self, event: SecurityEvent):
         """Log security event"""
         self._events.append(event)
         self._event_counts[event.event_type] += 1
         
-        # Log to file if configured
-        if self._file_handler:
-            security_logger = logging.getLogger('security')
-            security_logger.info(json.dumps(event.to_dict()))
+        # File logging disabled for safe operation
+        # Events are tracked in memory only
         
         # Log to main logger based on threat level
         if event.threat_level == ThreatLevel.CRITICAL:

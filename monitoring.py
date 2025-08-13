@@ -13,12 +13,13 @@ from collections import defaultdict, deque
 from typing import Dict, List, Optional, Any, Callable, Tuple
 from dataclasses import dataclass, field
 from enum import Enum, auto
-import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 import statistics
 
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger
+
+logger = get_safe_logger(__name__)
 
 class MetricType(Enum):
     """Types of metrics"""

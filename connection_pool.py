@@ -11,10 +11,11 @@ from collections import defaultdict, deque, OrderedDict
 from typing import Dict, Optional, Tuple, Any, Set, List
 from dataclasses import dataclass, field
 from enum import Enum, auto
-import logging
 import statistics
 
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger
+
+logger = get_safe_logger(__name__)
 
 class ConnectionState(Enum):
     """Connection state for pooling"""
