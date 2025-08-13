@@ -782,8 +782,8 @@ class TCPStateMachine:
                 logger.info(f"TCP: ESTABLISHED state - received {len(data)} bytes in sequence")
                 conn.rcv_nxt += len(data)
                 
-                # Check if this is first data in ESTABLISHED state - establish bidirectional forwarding
-                if not hasattr(conn, 'proxy_task') or conn.proxy_task is None:
+                # Check if bidirectional forwarding needs to be established
+                if not hasattr(conn, 'proxy_task') or conn.proxy_task is None or conn.proxy_task.done():
                     logger.info(f"[SETUP] First data in ESTABLISHED state for {conn.src_port}->{conn.dst_port} - establishing bidirectional forwarding")
                     logger.info(f"[SETUP] Data content: {data[:50]} (showing first 50 bytes)")
                     
@@ -823,7 +823,7 @@ class TCPStateMachine:
                     conn.rcv_nxt += len(new_data)
                     
                     # Check if this is first data in ESTABLISHED state - establish bidirectional forwarding
-                    if not hasattr(conn, 'proxy_task') or conn.proxy_task is None:
+                    if not hasattr(conn, 'proxy_task') or conn.proxy_task is None or conn.proxy_task.done():
                         logger.info(f"[SETUP] First data in ESTABLISHED state for {conn.src_port}->{conn.dst_port} - establishing bidirectional forwarding")
                         logger.info(f"[SETUP] Data content: {new_data[:50]} (showing first 50 bytes)")
                         
@@ -2227,24 +2227,25 @@ class AsyncServiceProxy:
         
         try:
             while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
-                # Standard stream read pattern
-                data = await asyncio.wait_for(conn.local_reader.read(4096), timeout=0.1)
-                
-                if not data:
-                    # Check if connection actually closed
-                    if conn.local_writer.is_closing():
-                        logger.debug("Service connection closed")
-                        break
-                    else:
-                        continue
-                
-                # Send through PPP using existing method
-                await self._send_data_to_ppp(conn, data, serial_writer)
-                logger.debug(f"Forwarded {len(data)} bytes Service->PPP")
-                
-        except asyncio.TimeoutError:
-            # Normal timeout, continue
-            pass
+                try:
+                    # Standard stream read pattern
+                    data = await asyncio.wait_for(conn.local_reader.read(4096), timeout=0.1)
+                    
+                    if not data:
+                        # Check if connection actually closed
+                        if conn.local_writer.is_closing():
+                            logger.debug("Service connection closed")
+                            break
+                        else:
+                            continue
+                    
+                    # Send through PPP using existing method
+                    await self._send_data_to_ppp(conn, data, serial_writer)
+                    logger.debug(f"Forwarded {len(data)} bytes Service->PPP")
+                    
+                except asyncio.TimeoutError:
+                    # Normal timeout, continue the loop
+                    continue
         except Exception as e:
             logger.error(f"Service->PPP forwarding error: {e}")
         finally:
