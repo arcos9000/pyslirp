@@ -7,13 +7,13 @@ Creates local TCP listeners that forward connections through the PPP link
 import asyncio
 import struct
 import socket
-import logging
 import random
 import time
 from typing import Dict, Tuple, Optional, Any
 from dataclasses import dataclass, field
+from safe_logger import get_safe_logger
 
-logger = logging.getLogger(__name__)
+logger = get_safe_logger(__name__)
 
 @dataclass
 class ForwardedConnection:

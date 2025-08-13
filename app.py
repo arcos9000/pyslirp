@@ -5,7 +5,6 @@ Main application logic separated from entry point
 """
 
 import asyncio
-import logging
 import platform
 from pathlib import Path
 
@@ -15,14 +14,15 @@ from security import SecurityManager
 from monitoring import MonitoringManager
 from connection_pool import ConnectionPool
 from error_recovery import ErrorRecoveryManager
-
-logger = logging.getLogger(__name__)
+from safe_logger import get_safe_logger, is_logging_enabled
 
 class PyLiRPApplication:
     """Main application class integrating all components"""
     
     def __init__(self, config_file: str = None, environment: str = None, mode: str = 'host',
                  testfor_timeout: int = None, exit_on_peer_disconnect: bool = False):
+        # Safe logger - only works if logging is enabled
+        self.logger = get_safe_logger(__name__) if is_logging_enabled() else None
         self.config_manager = ConfigManager()
         self.config = None
         self.config_file = config_file
@@ -41,6 +41,13 @@ class PyLiRPApplication:
         # Application state
         self.running = False
         self.shutdown_event = asyncio.Event()
+    
+    def _log_or_print(self, level: str, message: str):
+        """Log message if logging enabled, otherwise print to console"""
+        if self.logger and is_logging_enabled():
+            getattr(self.logger, level.lower())(message)
+        else:
+            print(f"[{level.upper()}] {message}")
         
     async def initialize(self):
         """Initialize all application components"""
@@ -50,7 +57,7 @@ class PyLiRPApplication:
                 await self._init_windows_support()
             
             # Load configuration
-            logger.info(f"Loading configuration in {self.mode} mode...")
+            self._log_or_print("info", f"Loading configuration in {self.mode} mode...")
             self.config = self._load_configuration()
             
             # Setup logging based on configuration
@@ -66,10 +73,10 @@ class PyLiRPApplication:
             # Integrate components
             self._integrate_components()
             
-            logger.info("All components initialized successfully")
+            self._log_or_print("info", "All components initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize application: {e}")
+            self._log_or_print("error", f"Failed to initialize application: {e}")
             raise
     
     async def _init_windows_support(self):

@@ -4,7 +4,6 @@ PyLiRP Main Entry Point (Simplified)
 """
 
 import asyncio
-import logging
 import sys
 import os
 import platform
@@ -21,19 +20,29 @@ from cli_utils import (
     handle_windows_commands
 )
 from config_manager import Config, SerialConfig, ProxyConfig
+from safe_logger import setup_safe_logging, get_safe_logger, is_logging_enabled
 
-logger = logging.getLogger(__name__)
+# Don't create logger yet - wait until we know if logging is enabled
 
 async def main():
     """Main entry point"""
     parser = create_argument_parser()
     args = parser.parse_args()
     
-    # Setup basic logging
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    # Setup safe logging - test writability if requested
+    import logging
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    logging_actually_enabled = setup_safe_logging(enabled=args.logging, level=log_level)
+    
+    # Create logger only if logging was successfully enabled
+    logger = get_safe_logger(__name__) if logging_actually_enabled else None
+    
+    if args.logging and logging_actually_enabled:
+        logger.info("Logging enabled and working")
+    elif args.logging and not logging_actually_enabled:
+        print("PyLiRP starting (logging requested but failed - check permissions)")
+    else:
+        print("PyLiRP starting (logging disabled - use --logging to enable)")
     
     # Check virtual environment
     check_virtual_environment()
@@ -92,9 +101,15 @@ async def main():
         await app.start()
         
     except KeyboardInterrupt:
-        logger.info("Interrupted by user")
+        if logging_actually_enabled and logger:
+            logger.info("Interrupted by user")
+        else:
+            print("Interrupted by user")
     except Exception as e:
-        logger.error(f"Application failed: {e}")
+        if logging_actually_enabled and logger:
+            logger.error(f"Application failed: {e}")
+        else:
+            print(f"Application failed: {e}")
         sys.exit(1)
 
 if __name__ == '__main__':

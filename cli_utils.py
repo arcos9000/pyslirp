@@ -73,7 +73,13 @@ Examples:
     parser.add_argument(
         '-d', '--debug',
         action='store_true',
-        help='Enable debug logging'
+        help='Enable debug logging (requires --logging)'
+    )
+    
+    parser.add_argument(
+        '--logging',
+        action='store_true',
+        help='Enable logging (disabled by default to prevent permission issues)'
     )
     
     parser.add_argument(

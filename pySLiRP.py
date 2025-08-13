@@ -8,7 +8,7 @@ import asyncio
 import struct
 import socket
 import serial_asyncio
-import logging
+from safe_logger import get_safe_logger
 import random
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Tuple, Any, List, NamedTuple
@@ -18,8 +18,8 @@ import heapq
 from collections import deque
 import math
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Logging is now handled by safe_logger in main.py
+logger = get_safe_logger(__name__)
 
 # PPP Protocol Constants
 class PPPProtocol:
