@@ -802,9 +802,11 @@ class TCPStateMachine:
                             seq=conn.snd_nxt, ack=conn.rcv_nxt, flags=TCPFlags.RST
                         )
                 
-                # Queue data for bidirectional forwarding instead of forwarding directly
-                logger.info(f"[DATA] Queueing {len(data)} bytes for forwarding to service: {data[:20]}")
-                await tcp_stack.proxy.handle_ppp_data(conn, data)
+                # Simple buffer approach - just store the data
+                logger.info(f"[DATA] Buffering {len(data)} bytes for simple forwarding: {data[:20]}")
+                if not hasattr(conn, 'data_buffer'):
+                    conn.data_buffer = b''
+                conn.data_buffer += data
                 
                 # Check for out-of-order segments that can now be processed
                 await self._process_out_of_order_queue(conn, writer)
@@ -2170,27 +2172,83 @@ class AsyncServiceProxy:
     async def _run_bidirectional_forwarding(self, conn: TCPConnection, 
                                           serial_writer: asyncio.StreamWriter):
         """
-        Core bidirectional forwarding logic using asyncio.gather() pattern.
-        
-        This is the proven pattern used in production proxies.
-        Both directions run concurrently and coordinate shutdown.
+        Simple stream relay pattern - the standard working approach.
+        No complex TCP state management, just forward streams bidirectionally.
         """
-        logger.info(f"Starting bidirectional forwarding: PPP({conn.src_port}) <-> Service({conn.dst_port})")
+        logger.info(f"Starting simple stream relay: PPP({conn.src_port}) <-> Service({conn.dst_port})")
         
         try:
-            # Run both directions concurrently using asyncio.gather()
-            # If either direction fails or completes, both stop
+            # Standard pattern: both directions run concurrently with gather()
             await asyncio.gather(
-                self._forward_ppp_to_service(conn),  # PPP -> Service
-                self._forward_service_to_ppp(conn, serial_writer),  # Service -> PPP
-                return_exceptions=False  # Stop both on first exception
+                self._simple_forward_ppp_to_service(conn),
+                self._simple_forward_service_to_ppp(conn, serial_writer),
+                return_exceptions=True
             )
             
         except Exception as e:
-            logger.error(f"[DEBUG] Bidirectional forwarding error for {conn.src_port}->{conn.dst_port}: {e}")
+            logger.error(f"Stream relay error for {conn.src_port}->{conn.dst_port}: {e}")
         finally:
-            logger.info(f"[DEBUG] GATHER: Bidirectional forwarding ended for {conn.src_port}->{conn.dst_port}")
+            logger.info(f"Stream relay ended for {conn.src_port}->{conn.dst_port}")
             await self._cleanup_connection(conn)
+    
+    async def _simple_forward_ppp_to_service(self, conn: TCPConnection):
+        """
+        Simple PPP->Service forwarding using standard stream pattern.
+        Gets data from PPP side and writes to service socket.
+        """
+        logger.debug(f"Starting PPP->Service forwarding for {conn.src_port}->{conn.dst_port}")
+        
+        try:
+            while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
+                # Check if we have data waiting in connection buffer
+                if hasattr(conn, 'data_buffer') and conn.data_buffer:
+                    data = conn.data_buffer
+                    conn.data_buffer = b''  # Clear buffer
+                    
+                    # Write to service using standard pattern
+                    conn.local_writer.write(data)
+                    await conn.local_writer.drain()
+                    logger.debug(f"Forwarded {len(data)} bytes PPP->Service")
+                
+                # Brief wait before checking again
+                await asyncio.sleep(0.01)
+                
+        except Exception as e:
+            logger.error(f"PPP->Service forwarding error: {e}")
+        finally:
+            logger.debug("PPP->Service forwarding stopped")
+    
+    async def _simple_forward_service_to_ppp(self, conn: TCPConnection, serial_writer: asyncio.StreamWriter):
+        """
+        Simple Service->PPP forwarding using standard stream pattern.
+        Reads from service socket and sends through PPP.
+        """
+        logger.debug(f"Starting Service->PPP forwarding for {conn.src_port}->{conn.dst_port}")
+        
+        try:
+            while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
+                # Standard stream read pattern
+                data = await asyncio.wait_for(conn.local_reader.read(4096), timeout=0.1)
+                
+                if not data:
+                    # Check if connection actually closed
+                    if conn.local_writer.is_closing():
+                        logger.debug("Service connection closed")
+                        break
+                    else:
+                        continue
+                
+                # Send through PPP using existing method
+                await self._send_data_to_ppp(conn, data, serial_writer)
+                logger.debug(f"Forwarded {len(data)} bytes Service->PPP")
+                
+        except asyncio.TimeoutError:
+            # Normal timeout, continue
+            pass
+        except Exception as e:
+            logger.error(f"Service->PPP forwarding error: {e}")
+        finally:
+            logger.debug("Service->PPP forwarding stopped")
     
     async def _forward_ppp_to_service(self, conn: TCPConnection):
         """
