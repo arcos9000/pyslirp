@@ -1,0 +1,57 @@
+[Unit]
+Description=PyLiRP - Python SLiRP for PiKVM Serial Access
+Documentation=https://github.com/arcos9000/pyslirp
+After=network.target kvmd.service
+Wants=kvmd.service
+
+[Service]
+Type=simple
+User=kvmd
+Group=kvmd
+
+# PiKVM runs on read-only filesystem by default
+# Ensure we have write access to necessary locations
+ReadWritePaths=/var/log /tmp /var/run
+
+# Working directory
+WorkingDirectory=/opt/pyslirp
+
+# Environment setup
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYSLIRP_CONFIG=/opt/pyslirp/config_pikvm.yaml"
+
+# Start command - use virtual environment if available
+ExecStartPre=/bin/bash -c 'if [ ! -c /dev/ttyGS0 ]; then echo "Waiting for USB gadget serial device..."; sleep 5; fi'
+ExecStart=/bin/bash -c 'if [ -d .venv ]; then source .venv/bin/activate; fi; exec python3 main.py --config ${PYSLIRP_CONFIG:-config_pikvm.yaml}'
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+
+# Security hardening (PiKVM specific)
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+
+# Device access - required for serial port
+DeviceAllow=/dev/ttyGS0 rw
+PrivateDevices=no
+
+# Capabilities needed for serial access
+AmbientCapabilities=CAP_SYS_TTY_CONFIG
+CapabilityBoundingSet=CAP_SYS_TTY_CONFIG
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pyslirp
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,133 @@
+# PiKVM-specific configuration for PyLiRP
+# This config is optimized for PiKVM's USB gadget serial device
+
+# Serial port configuration
+serial:
+  # PiKVM uses /dev/ttyGS0 for USB gadget serial
+  port: /dev/ttyGS0
+  baudrate: 115200
+  timeout: 1.0
+  
+# PPP configuration
+ppp:
+  # Server mode for PiKVM (accepts connections from remote clients)
+  mode: server
+  local_ip: 10.0.0.1
+  remote_ip: 10.0.0.2
+  mtu: 1500
+  lcp_echo_interval: 30
+  lcp_echo_failure: 4
+  
+# Service mappings - what services to expose through PPP
+services:
+  # SSH access to PiKVM
+  22:
+    enabled: true
+    name: "SSH"
+    host: "127.0.0.1"
+    port: 22
+    
+  # PiKVM web interface
+  80:
+    enabled: true
+    name: "PiKVM Web UI"
+    host: "127.0.0.1"
+    port: 80
+    
+  # PiKVM HTTPS interface
+  443:
+    enabled: true
+    name: "PiKVM Web UI (HTTPS)"
+    host: "127.0.0.1"
+    port: 443
+    
+  # VNC server (if enabled on PiKVM)
+  5900:
+    enabled: false
+    name: "VNC"
+    host: "127.0.0.1"
+    port: 5900
+    
+  # Custom services can be added here
+  8888:
+    enabled: false
+    name: "Test Echo Server"
+    host: "127.0.0.1"
+    port: 8888
+
+# Security settings
+security:
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    requests_per_second: 100
+    burst_size: 200
+    
+  # Connection limits
+  connection_limits:
+    max_connections_per_ip: 10
+    max_total_connections: 50
+    
+  # Access control (allow all for now, can be restricted)
+  access_control:
+    allow_ips: []  # Empty = allow all
+    block_ips: []
+    
+  # Brute force protection
+  brute_force_protection:
+    enabled: true
+    max_attempts: 5
+    lockout_duration: 300  # seconds
+    
+# Monitoring
+monitoring:
+  # Prometheus metrics
+  metrics:
+    enabled: true
+    port: 9090
+    
+  # Health check endpoint
+  health:
+    enabled: true
+    port: 9091
+    
+  # Packet capture for debugging
+  packet_capture:
+    enabled: false
+    output_file: /tmp/pyslirp_capture.pcap
+    
+# Logging
+logging:
+  level: INFO  # Change to DEBUG for troubleshooting
+  file: /var/log/pyslirp.log
+  max_size: 10485760  # 10MB
+  backup_count: 5
+  
+# Performance tuning
+performance:
+  # Buffer sizes
+  read_buffer_size: 65536
+  write_buffer_size: 65536
+  
+  # Connection pool
+  connection_pool_size: 100
+  connection_idle_timeout: 300
+  
+  # Async settings
+  max_concurrent_connections: 50
+  
+# PiKVM-specific settings
+pikvm:
+  # Run as systemd service
+  service_mode: true
+  
+  # USB gadget settings (if needed)
+  usb_gadget:
+    # These are typically configured in PiKVM's kvmd config
+    vendor_id: "0x1209"
+    product_id: "0x0001"
+    
+  # Integration with kvmd (optional)
+  kvmd_integration:
+    enabled: false
+    socket: /var/run/kvmd/kvmd.sock
