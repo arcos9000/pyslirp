@@ -995,6 +995,8 @@ class TCPStateMachine:
     
     def _create_ack_segment(self, tcp_stack, segment_info: Dict, conn: TCPConnection) -> bytes:
         """Create ACK segment"""
+        # Update ack_num to match rcv_nxt for proper acknowledgment
+        conn.ack_num = conn.rcv_nxt
         tcp_seg = self._create_tcp_segment(
             tcp_stack, segment_info,
             conn.snd_nxt, conn.rcv_nxt, TCPFlags.ACK
@@ -2076,11 +2078,11 @@ class AsyncServiceProxy:
                     
                     if data:
                         logger.info(f"ServiceProxy: Received {len(data)} bytes from service, forwarding to PPP")
-                        # Create TCP packet with data
+                        # Create TCP packet with data - use rcv_nxt for ACK number
                         tcp_seg = self.tcp_stack.create_tcp_segment(
                             conn.dst_ip, conn.src_ip,
                             conn.dst_port, conn.src_port,
-                            conn.seq_num, conn.ack_num,
+                            conn.seq_num, conn.rcv_nxt,  # Use rcv_nxt instead of ack_num
                             TCPFlags.PSH | TCPFlags.ACK,
                             data=data
                         )
@@ -2262,7 +2264,7 @@ class AsyncServiceProxy:
         tcp_segment = self.tcp_stack.create_tcp_segment(
             conn.dst_ip, conn.src_ip,  # Swap src/dst for response
             conn.dst_port, conn.src_port,
-            conn.seq_num, conn.ack_num,
+            conn.seq_num, conn.rcv_nxt,  # Use rcv_nxt for proper ACK
             TCPFlags.PSH | TCPFlags.ACK,
             data=data
         )

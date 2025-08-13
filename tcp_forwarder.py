@@ -381,7 +381,14 @@ class TCPPortForwarder:
                 conn.buffer = b""
                 
         elif conn.state == "ESTABLISHED":
-            # Handle data or control packets
+            # Handle ACK packets (important for tracking what server has received)
+            if flags & 0x10:  # ACK flag
+                # Server is acknowledging our sent data
+                server_ack = packet_info.get('ack', 0)
+                logger.debug(f"Server ACKed up to seq {server_ack}, our current seq is {conn.seq_num}")
+                # Could implement retransmission logic here if server_ack < conn.seq_num
+            
+            # Handle data packets
             data = packet_info.get('data', b'')
             if data:
                 logger.debug(f"Forwarding {len(data)} bytes from server to local client on port {dst_port}")
@@ -393,12 +400,13 @@ class TCPPortForwarder:
                 except Exception as e:
                     logger.error(f"Failed to forward data to local client: {e}")
                 
-                # Update ack number
+                # Update ack number to acknowledge received data
                 conn.ack_num = packet_info.get('seq', 0) + len(data)
                 
                 # Send ACK
                 await self._send_ack(conn)
             
+            # Handle FIN packets
             if flags & 0x01:  # FIN
                 logger.debug(f"Received FIN for port {dst_port}")
                 conn.state = "CLOSE_WAIT"

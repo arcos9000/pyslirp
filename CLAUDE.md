@@ -341,12 +341,12 @@ Created comprehensive diagnostic and fix scripts:
 
 ### **Key Commands for PiKVM Troubleshooting**
 ```bash
-# Check service logs
+# Check service l
 journalctl -u pyslirp -n 50
 
 # Run configuration cleanup
 sudo ./cleanup_config_mess.sh
-
+own 
 # Debug serial permissions
 sudo ./debug_pikvm_serial.sh
 
