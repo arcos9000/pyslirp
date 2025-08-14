@@ -802,11 +802,11 @@ class TCPStateMachine:
                             seq=conn.snd_nxt, ack=conn.rcv_nxt, flags=TCPFlags.RST
                         )
                 
-                # Simple buffer approach - just store the data
-                logger.info(f"[DATA] Buffering {len(data)} bytes for simple forwarding: {data[:20]}")
-                if not hasattr(conn, 'data_buffer'):
-                    conn.data_buffer = b''
-                conn.data_buffer += data
+                # Queue data for forwarding (use queue not buffer!)
+                logger.info(f"[DATA] Queueing {len(data)} bytes for forwarding: {data[:20]}")
+                if not hasattr(conn, 'data_queue'):
+                    conn.data_queue = asyncio.Queue()
+                await conn.data_queue.put(data)
                 
                 # Check for out-of-order segments that can now be processed
                 await self._process_out_of_order_queue(conn, writer)
@@ -2199,25 +2199,29 @@ class AsyncServiceProxy:
     
     async def _simple_forward_ppp_to_service(self, conn: TCPConnection):
         """
-        Simple PPP->Service forwarding using standard stream pattern.
-        Gets data from PPP side and writes to service socket.
+        Simple PPP->Service forwarding using queue pattern.
+        Gets data from PPP side queue and writes to service socket.
         """
         logger.debug(f"Starting PPP->Service forwarding for {conn.src_port}->{conn.dst_port}")
         
         try:
+            # Create queue if not exists
+            if not hasattr(conn, 'data_queue'):
+                conn.data_queue = asyncio.Queue()
+            
             while conn.state == TCPState.ESTABLISHED and not conn._shutdown_event.is_set():
-                # Check if we have data waiting in connection buffer
-                if hasattr(conn, 'data_buffer') and conn.data_buffer:
-                    data = conn.data_buffer
-                    conn.data_buffer = b''  # Clear buffer
+                try:
+                    # Wait for data from queue (with timeout to check shutdown)
+                    data = await asyncio.wait_for(conn.data_queue.get(), timeout=0.1)
                     
-                    # Write to service using standard pattern
+                    # Write to service
                     conn.local_writer.write(data)
                     await conn.local_writer.drain()
                     logger.debug(f"Forwarded {len(data)} bytes PPP->Service")
-                
-                # Brief wait before checking again
-                await asyncio.sleep(0.01)
+                    
+                except asyncio.TimeoutError:
+                    # Normal timeout, check shutdown and continue
+                    continue
                 
         except Exception as e:
             logger.error(f"PPP->Service forwarding error: {e}")
