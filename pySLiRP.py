@@ -784,7 +784,10 @@ class TCPStateMachine:
                 
                 # Check if bidirectional forwarding needs to be established
                 if not hasattr(conn, 'proxy_task') or conn.proxy_task is None or conn.proxy_task.done():
-                    logger.info(f"[SETUP] First data in ESTABLISHED state for {conn.src_port}->{conn.dst_port} - establishing bidirectional forwarding")
+                    if hasattr(conn, 'proxy_task') and conn.proxy_task and conn.proxy_task.done():
+                        logger.warning(f"[SETUP] Proxy task completed unexpectedly for {conn.src_port}->{conn.dst_port}, re-establishing")
+                    else:
+                        logger.info(f"[SETUP] First data in ESTABLISHED state for {conn.src_port}->{conn.dst_port} - establishing bidirectional forwarding")
                     logger.info(f"[SETUP] Data content: {data[:50]} (showing first 50 bytes)")
                     
                     # Map destination port to service
@@ -2194,7 +2197,7 @@ class AsyncServiceProxy:
         except Exception as e:
             logger.error(f"Stream relay error for {conn.src_port}->{conn.dst_port}: {e}")
         finally:
-            logger.info(f"Stream relay ended for {conn.src_port}->{conn.dst_port}")
+            logger.info(f"Stream relay ended for {conn.src_port}->{conn.dst_port}, state={conn.state.name if conn.state else 'None'}, shutdown={conn._shutdown_event.is_set() if hasattr(conn, '_shutdown_event') else 'N/A'}")
             await self._cleanup_connection(conn)
     
     async def _simple_forward_ppp_to_service(self, conn: TCPConnection):
