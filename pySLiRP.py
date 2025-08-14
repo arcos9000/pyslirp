@@ -1921,6 +1921,12 @@ class AsyncTCPStack:
                 conn.snd_nxt = conn.initial_seq
                 conn.snd_una = conn.initial_seq
                 
+                # Clean up any existing connection with same key
+                if key in self.connections:
+                    old_conn = self.connections[key]
+                    logger.info(f"Replacing existing connection {key}, cleaning up old one")
+                    await self.proxy._cleanup_connection(old_conn)
+                
                 self.connections[key] = conn
             else:
                 # No connection exists for non-SYN segment
@@ -2413,9 +2419,14 @@ class AsyncServiceProxy:
         if hasattr(conn, 'proxy_task'):
             conn.proxy_task = None
         
-        # Remove from active connections
+        # Remove from both connection tables
         key = f"{conn.src_port}->{conn.dst_port}"
         self.active_connections.pop(key, None)
+        
+        # Also remove from main connections table if it exists
+        if hasattr(self, 'connections'):
+            conn_key = conn.get_connection_id()
+            self.connections.pop(conn_key, None)
 
 class AsyncPPPBridge:
     """Main async PPP to services bridge"""
