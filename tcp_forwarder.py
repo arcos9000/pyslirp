@@ -386,7 +386,12 @@ class TCPPortForwarder:
                 # Server is acknowledging our sent data
                 server_ack = packet_info.get('ack', 0)
                 logger.debug(f"Server ACKed up to seq {server_ack}, our current seq is {conn.seq_num}")
-                # Could implement retransmission logic here if server_ack < conn.seq_num
+                
+                # CRITICAL: Update our sequence number to match what server ACKed
+                # This ensures we stay in sync with the server's expectations
+                if server_ack > conn.seq_num:
+                    logger.debug(f"Updating seq from {conn.seq_num} to {server_ack} based on server ACK")
+                    conn.seq_num = server_ack
             
             # Handle data packets
             data = packet_info.get('data', b'')
